@@ -7,6 +7,7 @@ $wpfinet_root = dirname( __DIR__, 2 );
 $wpfinet_env  = getenv( 'WPFINET_TEST_ENV' ) ?: $wpfinet_root . '/.test-env';
 if ( ! file_exists( $wpfinet_env . '/clean.sqlite' ) ) { fwrite( STDERR, "Run bin/setup-test-env.sh first.\n" ); exit( 1 ); }
 copy( $wpfinet_env . '/clean.sqlite', $wpfinet_env . '/wordpress/wp-content/database/test.sqlite' );
+file_put_contents( $wpfinet_env . '/wordpress/wp-content/debug.log', '' ); // Each run starts with an empty log (ZzNoWarningsTest).
 $_SERVER['HTTP_HOST'] = '127.0.0.1:8890'; $_SERVER['SERVER_NAME'] = '127.0.0.1'; $_SERVER['REQUEST_URI'] = '/';
 $_SERVER['REQUEST_METHOD'] = 'GET'; $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 define( 'WP_USE_THEMES', false );
