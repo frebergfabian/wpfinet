@@ -1,13 +1,23 @@
-# WPFinet / Finet Troubleshoot
+# WPFINET (Finet Troubleshoot) 3.0
 
 Ett produktionsinriktat WordPress-plugin för interaktiva, nodbaserade felsökningsguider, driftstörningar och samtyckesstyrd statistik. Guider publiceras med en shortcode, fungerar i Elementor Shortcode-widgeten och kan flyttas mellan WordPress-installationer som dokumenterad JSON.
 
+## Nytt i 3.0
+
+Se [CHANGELOG.md](CHANGELOG.md) och repo-dokumentationen i `docs/`. Nya moduler är avstängda som standard och slås på under **WPFinet → Moduler & integrationer**:
+
+- `[wpfinet_access_check]`: adressökning mot Finet Access API, som ersätter WPGetAPI-lösningen.
+- `[wpfinet_instagram_feed]`: Instagramflöde via Metas officiella API, med lokalt lagrade bilder.
+- Cookies & samtycke: banner, förhandsblockering, inventarium och `[wpfinet_cookie_policy]` / `[wpfinet_cookie_settings]`. Ersätter WPConsent efter verifiering.
+
+WP-CLI: `wp wpfinet migrate`, `wp wpfinet inventory`, `wp wpfinet jobs run`, `wp wpfinet access sync|status|lookup`, `wp wpfinet instagram sync|status`.
+
 ## Krav
 
-- WordPress 6.5 eller senare
-- PHP 8.1 eller senare
+- WordPress 6.5 eller senare (testat 7.1.4)
+- PHP 8.1 eller senare (mål: 8.5) med sodium, intl, mbstring
 - Moderna webbläsare
-- Valfritt: [WP Consent API](https://wordpress.org/plugins/wp-consent-api/) och WPConsent för statistik
+- Valfritt: [WP Consent API](https://wordpress.org/plugins/wp-consent-api/), som fungerar med WPFINET:s egen samtyckeshanterare eller en annan CMP
 - Valfritt: WPForms för formulärnoder
 
 ## Användning

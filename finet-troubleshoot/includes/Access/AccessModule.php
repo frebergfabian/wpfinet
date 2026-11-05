@@ -68,6 +68,10 @@ final class AccessModule {
 		if ( ! RateLimiter::hit( 'access', ClientIp::resolve( ! empty( $settings['trust_cloudflare'] ) ), (int) $settings['rate_limit'], MINUTE_IN_SECONDS ) ) {
 			return new \WP_REST_Response( array( 'status' => 'rate_limited', 'message' => __( 'För många sökningar. Vänta en minut och försök igen.', 'finet-troubleshoot' ) ), 429, $headers + array( 'Retry-After' => '60' ) );
 		}
+		$origin = (string) $request->get_header( 'origin' );
+		if ( $origin && strtolower( (string) wp_parse_url( $origin, PHP_URL_HOST ) ) !== strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) && ! in_array( $origin, (array) apply_filters( 'wpfinet_access_allowed_origins', array() ), true ) ) {
+			return new \WP_REST_Response( array( 'status' => 'forbidden_origin', 'message' => '' ), 403, $headers ); // Other websites may not embed the lookup.
+		}
 		$service = new AccessService( $settings );
 		if ( '' !== (string) $request->get_param( 'website' ) ) {
 			return new \WP_REST_Response( $this->public( $service->result( 'invalid' ) ), 400, $headers ); // Honeypot.

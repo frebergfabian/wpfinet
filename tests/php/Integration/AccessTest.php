@@ -191,6 +191,12 @@ final class AccessTest extends TestCase {
 		$this->assertSame( 429, $this->rest( 'POST', '/wpfinet/v1/access/check', array( 'address' => 'Exempelgatan 1' ) )->get_status() );
 		$this->assertSame( 400, $this->rest( 'POST', '/wpfinet/v1/access/check', array( 'address' => str_repeat( 'a', 200 ) ) )->get_status(), 'maxLength enforced before rate limit' );
 		$this->assertArrayNotHasKey( '/wpfinet/v1/access/check', array_filter( rest_get_server()->get_routes(), static fn ( $h, $r ) => str_contains( $r, 'access' ) && str_contains( $r, 'list' ), ARRAY_FILTER_USE_BOTH ) );
+		$foreign = new \WP_REST_Request( 'POST', '/wpfinet/v1/access/check' );
+		$foreign->set_header( 'content-type', 'application/json' );
+		$foreign->set_header( 'origin', 'https://evil.example' );
+		$foreign->set_body( wp_json_encode( array( 'address' => 'Exempelgatan 1' ) ) );
+		$_SERVER['REMOTE_ADDR'] = '198.51.100.251';
+		$this->assertSame( 403, rest_get_server()->dispatch( $foreign )->get_status(), 'cross-origin browser calls are refused' );
 		$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 		$routes = array_keys( rest_get_server()->get_routes() );
 		$this->assertSame( array( '/wpfinet/v1/access/check' ), array_values( array_filter( $routes, static fn ( $r ) => str_contains( $r, '/access' ) ) ), 'no endpoint lists addresses' );
