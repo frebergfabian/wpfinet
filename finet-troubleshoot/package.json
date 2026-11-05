@@ -1,0 +1,16 @@
+{
+  "name": "finet-troubleshoot",
+  "version": "2.0.1",
+  "private": true,
+  "description": "Admin builder and lightweight frontend runtime for Finet Troubleshoot.",
+  "scripts": {
+    "build": "wp-scripts build --config webpack.config.js",
+    "start": "wp-scripts start --config webpack.config.js",
+    "lint:js": "wp-scripts lint-js assets/src",
+    "format": "wp-scripts format assets/src --write",
+    "test": "wp-scripts test-unit-js"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^30.14.0"
+  }
+}

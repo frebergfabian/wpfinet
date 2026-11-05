@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/finet-troubleshoot-2.0.schema.json",
+  "title": "WPFinet import 2.0",
+  "type": "object",
+  "required": ["schema", "schema_version", "guides"],
+  "properties": {
+    "schema": { "const": "finet-troubleshoot" },
+    "schema_version": { "const": "2.0" },
+    "guides": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/guide" } },
+    "outages": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/outage" } }
+  },
+  "$defs": {
+    "guide": { "type": "object", "required": ["external_id", "title", "slug", "start_node", "nodes"], "properties": { "external_id": { "pattern": "^[a-z0-9][a-z0-9-]{0,99}$" }, "title": { "type": "string" }, "slug": { "type": "string" }, "start_node": { "type": "string" }, "nodes": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/node" } } } },
+    "node": { "type": "object", "required": ["id", "type", "title"], "properties": { "id": { "pattern": "^[a-z0-9][a-z0-9-]{0,99}$" }, "type": { "enum": ["information", "action", "question", "check", "result", "support", "outage", "wpforms"] }, "title": { "type": "string" }, "next": { "type": "string" }, "options": { "type": "array", "maxItems": 50, "items": { "type": "object", "required": ["id", "label", "next"] } }, "editor_position": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" } } } } },
+    "outage": { "type": "object", "required": ["external_id", "title"], "properties": { "external_id": { "type": "string" }, "title": { "type": "string" }, "timeline": { "type": "array" } } }
+  }
+}

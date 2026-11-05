@@ -1,0 +1,61 @@
+{
+  "schema": "finet-troubleshoot",
+  "schema_version": "2.0",
+  "exported_at": "2026-08-25T00:00:00Z",
+  "guides": [
+    {
+      "external_id": "internet-fungerar-inte",
+      "title": "Internet fungerar inte",
+      "slug": "internet-fungerar-inte",
+      "description": "En enkel guide för att felsöka en internetanslutning.",
+      "status": "publish",
+      "start_node": "start-om-router",
+      "settings": { "use_global_design": true },
+      "nodes": [
+        {
+          "id": "start-om-router", "type": "question", "title": "Starta om router", "heading": "Har du startat om routern?", "intro": "Stäng av strömmen i 30 sekunder och starta sedan routern igen.",
+          "image": { "url": "demo:cpe", "alt": "Router med statuslampor", "caption": "Kontrollera att statuslamporna tänds.", "placement": "above_heading", "zoom": true },
+          "options": [{ "id": "ja", "label": "Ja", "next": "kontrollera-utrustning" }, { "id": "nej", "label": "Nej, hjälp mig", "next": "gora-omstart" }],
+          "editor_position": { "x": 80, "y": 180 }
+        },
+        {
+          "id": "gora-omstart", "type": "action", "title": "Gör omstart", "heading": "Starta om utrustningen", "content": "<ol><li>Koppla ur strömmen till router och eventuell mediakonverter.</li><li>Vänta 30 sekunder.</li><li>Koppla in först mediakonvertern och sedan routern.</li></ol>", "button_text": "Jag har startat om", "next": "efter-omstart",
+          "editor_position": { "x": 350, "y": 280 }
+        },
+        {
+          "id": "efter-omstart", "type": "question", "title": "Efter omstart", "heading": "Fungerar internet nu?", "options": [{ "id": "ja", "label": "Ja, det fungerar", "next": "lost" }, { "id": "nej", "label": "Nej", "next": "kontrollera-utrustning" }],
+          "editor_position": { "x": 630, "y": 280 }
+        },
+        {
+          "id": "kontrollera-utrustning", "type": "check", "title": "Kontrollera utrustning", "heading": "Lyser routerns internetlampa normalt?", "intro": "Kontrollera nätverkskablar och att lampan för internet/WAN lyser eller blinkar.", "options": [{ "id": "ja", "label": "Ja", "next": "kontrollera-driftstorning" }, { "id": "nej", "label": "Nej", "next": "kontrollera-strom" }],
+          "editor_position": { "x": 350, "y": 70 }
+        },
+        {
+          "id": "kontrollera-strom", "type": "action", "title": "Kontrollera ström och kablar", "heading": "Kontrollera ström och kablar", "content": "<p>Säkerställ att strömadaptern sitter ordentligt och att WAN-kabeln är ansluten till rätt port.</p>", "button_text": "Klart", "next": "kontrollera-driftstorning",
+          "editor_position": { "x": 630, "y": 70 }
+        },
+        {
+          "id": "kontrollera-driftstorning", "type": "outage", "title": "Kontrollera driftstörning", "heading": "Kontrollerar aktuell driftstatus", "outage": { "service": "internet", "mode": "branch", "match_node": "driftstorning", "no_match_node": "testa-igen" },
+          "editor_position": { "x": 900, "y": 70 }
+        },
+        {
+          "id": "driftstorning", "type": "result", "title": "Pågående driftstörning", "heading": "En driftstörning kan påverka din anslutning", "content": "<p>Vi arbetar med att lösa problemet. Följ statusinformationen för uppdateringar.</p>", "result_type": "warning", "ctas": [{ "id": "status", "type": "url", "label": "Visa driftinformation", "value": "/driftstorningar/" }],
+          "editor_position": { "x": 1170, "y": 40 }
+        },
+        {
+          "id": "testa-igen", "type": "question", "title": "Testa igen", "heading": "Fungerar internet efter kontrollerna?", "options": [{ "id": "ja", "label": "Ja", "next": "lost" }, { "id": "nej", "label": "Nej, kontakta support", "next": "support" }],
+          "editor_position": { "x": 1170, "y": 190 }
+        },
+        {
+          "id": "lost", "type": "result", "title": "Problemet är löst", "heading": "Bra – internet fungerar igen", "content": "<p>Du kan stänga den här guiden.</p>", "result_type": "success",
+          "editor_position": { "x": 1450, "y": 140 }
+        },
+        {
+          "id": "support", "type": "support", "title": "Kontakta support", "heading": "Vi hjälper dig vidare", "content": "<p>Ha gärna routerns statuslampor och eventuella felmeddelanden till hands.</p>", "support": { "inherit_global": false, "phone": "010-000 00 00", "email": "support@example.se", "url": "/kontakt/" }, "ctas": [{ "id": "ring", "type": "phone", "label": "Ring support", "value": "010-000 00 00" }, { "id": "epost", "type": "email", "label": "Skicka e-post", "value": "support@example.se" }, { "id": "formular", "type": "wpforms", "label": "Öppna felanmälan", "form_title": "Felanmälan internet", "form_id": 0 }],
+          "editor_position": { "x": 1450, "y": 280 }
+        }
+      ]
+    }
+  ],
+  "outages": []
+}
