@@ -81,7 +81,7 @@ final class Commands {
 	}
 
 	/**
-	 * Access API: sync | status | lookup "<adress>".
+	 * Access API: status | test | sync | lookup "<adress>". "test" shows the masked response structure, never addresses.
 	 *
 	 * @param array<int,string> $args
 	 */
@@ -92,6 +92,11 @@ final class Commands {
 			case 'sync':
 				$result = $service->sync( true );
 				$result['ok'] ? \WP_CLI::success( $result['message'] ) : \WP_CLI::error( $result['message'], false );
+				break;
+			case 'test':
+				$result = $service->test_connection();
+				\WP_CLI::line( (string) wp_json_encode( $result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+				$result['ok'] ? \WP_CLI::success( 'Anslutningen fungerar.' ) : \WP_CLI::error( (string) $result['error'], false );
 				break;
 			case 'lookup':
 				\WP_CLI::line( (string) wp_json_encode( $service->lookup( (string) ( $args[1] ?? '' ) ), JSON_UNESCAPED_UNICODE ) );

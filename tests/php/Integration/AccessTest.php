@@ -180,6 +180,13 @@ final class AccessTest extends TestCase {
 		$this->assertSame( 0, AddressIndex::backfill_fold(), 'idempotent' );
 	}
 
+	public function test_plain_array_headers_from_other_filters_do_not_crash(): void {
+		$this->configure( array( 'endpoint_path' => 'addresses' ) );
+		$this->responder = static fn () => array( 'headers' => array( 'content-type' => 'application/json' ), 'body' => '[{"streetName":"Storgatan","streetNumber":"1","accessState":"CONNECTED"}]', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
+		$sync = ( new AccessService() )->sync( false );
+		$this->assertTrue( $sync['ok'], $sync['message'] );
+	}
+
 	public function test_shortcode_attributes(): void {
 		Modules::update( array( 'access' => true ) );
 		$module = new AccessModule();

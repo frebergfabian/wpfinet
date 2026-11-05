@@ -87,7 +87,9 @@ final class HttpClient {
 				$status = (int) wp_remote_retrieve_response_code( $response );
 				$body   = (string) wp_remote_retrieve_body( $response );
 				$headers = array();
-				foreach ( (array) wp_remote_retrieve_headers( $response )->getAll() as $k => $v ) { $headers[ strtolower( (string) $k ) ] = is_array( $v ) ? implode( ', ', $v ) : (string) $v; }
+				$raw     = wp_remote_retrieve_headers( $response );
+				$raw     = is_object( $raw ) && method_exists( $raw, 'getAll' ) ? $raw->getAll() : (array) $raw; // Other plugins' pre_http_request filters may return a plain array.
+				foreach ( $raw as $k => $v ) { $headers[ strtolower( (string) $k ) ] = is_array( $v ) ? implode( ', ', $v ) : (string) $v; }
 				$result = array( 'ok' => $status >= 200 && $status < 300, 'status' => $status, 'body' => $body, 'headers' => $headers, 'error' => $status >= 200 && $status < 300 ? '' : 'HTTP ' . $status, 'duration_ms' => $ms );
 			}
 			$retryable = ! $result['ok'] && ( 0 === $result['status'] || $result['status'] >= 500 || 429 === $result['status'] );

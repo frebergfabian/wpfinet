@@ -1,9 +1,10 @@
-# WPFINET 3.0
+# WPFINET 3.1
 
 WordPress-plugin för Finet: felsökningsguider, driftstörningar, samtyckesstyrd statistik, adressökning mot Finet Access API, Instagramflöde och samtyckeshantering för cookies. Version 3.0 är en **bakåtkompatibel uppgradering** av `Finet Troubleshoot 2.0.1`. Pluginidentiteten är densamma (`finet-troubleshoot/finet-troubleshoot.php`), och data, URL:er, shortcodes, REST-rutter och hooks behålls.
 
 | Dokument | Innehåll |
 |---|---|
+| [docs/LEVERANS-CHATGPT-WORK.md](docs/LEVERANS-CHATGPT-WORK.md) | Överlämning 3.1.0: installation, konfiguration, shortcodes, Instagram, Access API, testresultat |
 | [docs/TESTPLAN.md](docs/TESTPLAN.md) | Manuell testplan steg för steg |
 | [docs/FASRAPPORT.md](docs/FASRAPPORT.md) | Status per fas, testresultat, acceptanskriterier och vad som behöver beslut |
 | [docs/fas-a/INVENTERING.md](docs/fas-a/INVENTERING.md) | Inventering av 2.0.1, kontrakt, avvikelser mot registret, 30 buggar och okända uppgifter |

@@ -18,6 +18,8 @@ Uppgradering på plats av 3.0.0 (eller direkt från 2.0.1). Inga data tas bort; 
 
 - Stängknappen fungerar (`[hidden]` skrevs över av `display:flex`). Ny layout i Finets färger, märkt region, radbryts på mobil, 44 px stängyta, fokus flyttas till huvudinnehållet. Stängning gäller per bannerversion och session.
 
+- Inställningen "Statussida URL" (Inställningar → Driftstörningar), som fanns redan i 2.0.1 men aldrig användes, styr nu länken "+N till" i bannern och `[wpfinet_outage_status]`. Tomt = `/driftstorningar/` som förut.
+
 **Felsökningsguide**
 
 - Nytt kort i Finets formspråk (Montserrat/Poppins från temat, indigo knappar, orange accent). Ytan reserverar höjden för guidens högsta steg, knapparna ligger i botten av kortet och navigeringsraden står still, så innehåll under guiden inte hoppar. Bildram med fast höjd (beskärs aldrig). Lika stora knappar, minst 50 px. Navigering, statistik, bilder, data och API oförändrade. 2.x-standardvärden för utseende skriver inte längre över den nya stilen; egna värden gäller fortfarande.
@@ -28,6 +30,7 @@ Uppgradering på plats av 3.0.0 (eller direkt från 2.0.1). Inga data tas bort; 
 - Reservmatchning utan diakriter (API:t skriver "Ostra Langgatan", besökaren "Östra Långgatan"). Används bara när exakt en gata matchar, så Ågatan och Agatan blandas aldrig ihop.
 - Standardtexterna följer den gamla adresskontrollen ("{adress}: ansluten till Finet." m.fl.); `{adress}` ersätts med besökarens egen adress.
 - Shortcode-attribut: `placeholder`, `hide_label`, `hint`, `theme="dark"` (för mörk hero), flera klasser i `class`.
+- Fel rättat: om ett annat plugin svarade via `pre_http_request` med vanliga array-headers kraschade anropet.
 - Migrering 3.0 → 3.1 lägger till kolumnen `street_fold` i adressindexet och fyller den för befintliga rader.
 
 ## 3.0.0

@@ -21,9 +21,9 @@
 .wpfinet-banner a:focus-visible, .wpfinet-banner__close:focus-visible { outline: 3px solid #fd9800; outline-offset: 2px; }
 .wpfinet-banner .screen-reader-text { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 640px) {
-	.wpfinet-banner__inner { flex-wrap: wrap; align-items: flex-start; padding: 10px 6px 12px 14px; }
+	.wpfinet-banner__inner { flex-wrap: wrap; align-items: flex-start; column-gap: 10px; padding: 10px 6px 12px 14px; }
 	.wpfinet-banner__icon { margin-top: 2px; }
-	.wpfinet-banner__text { flex: 1 1 calc(100% - 90px); }
+	.wpfinet-banner__text { flex: 1 1 calc(100% - 110px); }
 	.wpfinet-banner__close { order: 2; margin-top: -8px; }
 	.wpfinet-banner__link { order: 3; margin-left: 32px; }
 }

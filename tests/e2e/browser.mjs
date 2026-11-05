@@ -69,7 +69,7 @@ try {
 	const [resp] = await Promise.all([page.waitForResponse((r) => r.url().includes('/access/check')), input.press('Enter')]);
 	const body = await resp.text();
 	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-connected'));
-	check('address check: response contains one status only', !body.includes('Exempelgatan') && body.length < 400 && JSON.parse(body).status === 'connected', body);
+	check('address check: response contains one status only', !/Exempelgatan [23]|testv|Testall|"CONNECTED"|NOT_CONNECTED|PLANNED/.test(body) && body.length < 400 && JSON.parse(body).status === 'connected', body);
 	check('address check: no inline script in page content', (await page.locator('.wpfinet-access script').count()) === 0);
 	await page.route('**/access/check', (route) => route.abort());
 	await input.fill('Exempelgatan 1'); await input.press('Enter');

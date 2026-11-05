@@ -1,10 +1,20 @@
-# Migrering och rollback: Finet Troubleshoot 2.0.1 → WPFINET 3.0.0
+# Migrering och rollback: Finet Troubleshoot 2.0.1 / WPFINET 3.0.0 → WPFINET 3.1.0
 
-3.0 är en **uppgradering på plats** av samma plugin: katalog `finet-troubleshoot/`, fil `finet-troubleshoot.php` och textdomän `finet-troubleshoot`. Det blir inget parallellt plugin, och inga CPT:er, hooks eller REST-rutter registreras två gånger.
+3.1 (liksom 3.0) är en **uppgradering på plats** av samma plugin: katalog `finet-troubleshoot/`, fil `finet-troubleshoot.php` och textdomän `finet-troubleshoot`. Det blir inget parallellt plugin, och inga CPT:er, hooks eller REST-rutter registreras två gånger.
 
 Migreringen är **additiv och idempotent**. Den ändrar inga post-ID, slugs, URL:er, meta, termer eller statistikrader, och den tar inte bort något. Det är verifierat med de riktiga ZIP-filerna i `tests/upgrade/run-upgrade-test.sh` (se avsnitt 6).
 
 > **Bygg inte om i produktion.** Kör allt nedan på staging först. Fråga ansvarig innan något görs i produktion som inte går att ångra.
+
+## 0. Från 3.0.0 till 3.1.0 (dev.finet.se kör 3.0.0)
+
+1. Backup av databas och `wp-content/` (som i avsnitt 1). Spara `finet-troubleshoot-3.0.0.zip` för rollback.
+2. **Tillägg → Lägg till nytt → Ladda upp** `finet-troubleshoot-3.1.0.zip` → **Ersätt nuvarande med uppladdad**.
+3. Öppna wp-admin som administratör (migreringen körs på `admin_init`) eller kör `wp wpfinet migrate`. **WPFinet → Diagnos** ska visa databasversion 3.1.0.
+4. Migreringen lägger bara till kolumnen `street_fold` i `{prefix}wpfinet_access_index` och fyller den för befintliga rader. Moduler, inställningar, hemligheter, Instagraminlägg, samtyckesinställningar och adressindex är oförändrade (verifierat, avsnitt 6).
+5. Rensa Cloudflare-cachen för HTML (nya CSS/JS har versionsparameter `?ver=3.1.0`).
+
+Rollback till 3.0.0: `wp option update finet_ts_db_version 3.0.0` och ladda upp 3.0.0-ZIP:en med **Ersätt**. Kolumnen `street_fold` ignoreras av 3.0.
 
 ## 1. Före uppgradering (staging och sedan produktion)
 
@@ -19,9 +29,9 @@ Migreringen är **additiv och idempotent**. Den ändrar inga post-ID, slugs, URL
 
 ## 2. Uppgradering på staging
 
-1. Ladda upp `finet-troubleshoot-3.0.0.zip` via **Tillägg → Lägg till nytt → Ladda upp** och välj **Ersätt nuvarande med uppladdad**. Pluginet förblir aktivt.
+1. Ladda upp `finet-troubleshoot-3.1.0.zip` via **Tillägg → Lägg till nytt → Ladda upp** och välj **Ersätt nuvarande med uppladdad**. Pluginet förblir aktivt.
 2. Öppna wp-admin som administratör. Migreringen körs automatiskt på `admin_init` med lås och loggning. Alternativt: `wp wpfinet migrate`.
-3. **WPFinet → Diagnos**: kontrollera att databasversionen är 3.0.0 och läs migreringsloggen (antal före/efter samt eventuell varning om "Radera data").
+3. **WPFinet → Diagnos**: kontrollera att databasversionen är 3.1.0 och läs migreringsloggen (antal före/efter samt eventuell varning om "Radera data").
 4. **WPFinet → Diagnos → Kör inventering** (bara läsning). Rapporten visar:
    - var `finet_troubleshoot`, `wpfinet_outages` och `wpfinet_outage_status` används, inklusive i Elementor-data
    - trasiga guidereferenser (saknade eller opublicerade guider)
@@ -40,7 +50,9 @@ Alla nya moduler (Adressökning, Instagram, Cookies & samtycke) är **avstängda
 
 ### Adressökning (ersätter WPGetAPI-lösningen)
 1. **Moduler & integrationer → Adressökning på**.
-2. **Adressökning**: fyll i endpoint-sökväg, autentisering och fältmappning från WPGetAPI-konfigurationen. Hemligheten läggs helst i `wp-config.php` som `WPFINET_ACCESS_API_SECRET`.
+2. **Adressökning**: välj datakälla.
+   - **Steg 1 (rekommenderat först): "Befintlig WPGetAPI-konfiguration".** WPGetAPI måste vara aktivt med API `finet_access` och endpoint `get_access_data`. Sökväg och nyckel läses från WPGetAPI, bara i bakgrundssynken.
+   - **Steg 2: "Finet Access API (direkt)".** Fyll i endpoint-sökväg, autentisering och fältmappning från WPGetAPI-konfigurationen. Hemligheten läggs helst i `wp-config.php` som `WPFINET_ACCESS_API_SECRET`. Först därefter kan WPGetAPI inaktiveras.
 3. **Testa anslutning**. Förhandsgranskningen visar svarets struktur med maskerade värden. Justera "Sökväg till adresslistan" tills fältmappningen hittar adresserna.
 4. **Synka nu**. Gör sedan **Testsökning** med några kända adresser (ansluten, ej ansluten, med bokstav, med å/ä/ö).
 5. Ersätt den gamla koden på respektive sida, som inventeringen pekat ut, med `[wpfinet_access_check]`, Elementor-widgeten "Shortcode" eller blocket "WPFINET adressökning". Kontrollera att CTA:erna går till `/tjanster` och `/kontakta-oss`.
@@ -86,7 +98,7 @@ Avinstallera **aldrig** pluginet som rollback-metod. Det raderar data om "Radera
 
 ## 6. Verifierat uppgraderingstest
 
-`tests/upgrade/run-upgrade-test.sh <2.0.1.zip>` installerar den riktiga 2.0.1-ZIP:en, skapar guider, driftstörning med taxonomier och tidslinje, sida med shortcodes, inställningar och statistikrader. Därefter installeras 3.0-ZIP:en på plats och följande jämförs:
+`tests/upgrade/run-upgrade-test.sh <2.0.1.zip>` installerar den riktiga 2.0.1-ZIP:en, skapar guider, driftstörning med taxonomier och tidslinje, sida med shortcodes, inställningar och statistikrader. Därefter installeras den nya ZIP:en på plats och följande jämförs. Samma skript körs med 3.0.0-ZIP:en som startpunkt; då skapas även 3.x-data (adressindex, krypterad hemlighet, egna texter, Instagram- och samtyckesinställningar) och kontrolleras efter uppgraderingen:
 
 | Kontroll | Resultat |
 |---|---|
@@ -96,6 +108,7 @@ Avinstallera **aldrig** pluginet som rollback-metod. Det raderar data om "Radera
 | `finet_ts_settings` | ✔ oförändrat |
 | Statistiktabeller (radinnehåll) | ✔ oförändrat |
 | Capabilities | ✔ behållna |
-| Databasversion 2.0.0 → 3.0.0, migreringslogg | ✔ |
+| Databasversion 2.0.0 → 3.1.0 resp. 3.0.0 → 3.1.0, migreringslogg | ✔ |
+| 3.0.0 → 3.1.0: moduler, Access-/Instagram-/samtyckesinställningar, hemligheter (dekrypteras), adressindex oförändrade; `street_fold` ifylld; egna texter kvar | ✔ |
 | HTTP 200: guidesida, arkiv, datum-URL, slug-URL | ✔ (0,07–0,16 s) |
-| Rollback till 2.0.1 (med steg 2): alla data oförändrade, sidor renderas | ✔ |
+| Rollback till 2.0.1 resp. 3.0.0: alla data oförändrade, sidor renderas | ✔ |
