@@ -108,6 +108,92 @@ final class AccessTest extends TestCase {
 		$this->assertStringContainsString( 'ACTIVE', wp_json_encode( $test['mapped_sample'] ) );
 	}
 
+	public function test_wpgetapi_adapter_runs_only_in_background_and_parses_all_formats(): void {
+		if ( ! function_exists( 'wpgetapi_endpoint' ) ) {
+			$this->configure( array( 'adapter' => 'wpgetapi' ) );
+			$this->assertStringContainsString( 'WPGetAPI är inte aktivt', implode( ' ', AccessSettings::missing() ) );
+			$this->assertFalse( ( new AccessService() )->sync( false )['ok'] );
+		}
+		require_once dirname( __DIR__ ) . '/fixtures/wpgetapi-fake.php';
+		$GLOBALS['wpfinet_fake_wpgetapi_calls'] = array();
+		$list = array(
+			array( 'streetName' => 'Storgatan', 'streetNumber' => '12', 'streetLittera' => 'B', 'accessState' => 'CONNECTED' ),
+			array( 'streetName' => 'Storgatan', 'streetNumber' => '14', 'streetLittera' => '', 'accessState' => 'NOT_CONNECTED' ),
+			array( 'streetName' => 'Ostra Langgatan', 'streetNumber' => '3', 'streetLittera' => '', 'accessState' => 'CONNECTED' ),
+		);
+		$this->configure( array( 'adapter' => 'wpgetapi', 'mode' => 'lookup' ) );
+		$this->assertSame( array(), AccessSettings::missing() );
+		$this->assertTrue( AccessSettings::uses_index(), 'WPGetAPI always fills the local index' );
+
+		// Rendering and visitor lookups never call WPGetAPI.
+		( new AccessModule() )->render( '', array() );
+		( new AccessService() )->lookup( 'Storgatan 14' );
+		$this->assertSame( array(), $GLOBALS['wpfinet_fake_wpgetapi_calls'] );
+
+		foreach ( array( 'array' => $list, 'json' => wp_json_encode( $list ), 'object' => json_decode( wp_json_encode( $list ) ) ) as $format => $payload ) {
+			$GLOBALS['wpfinet_fake_wpgetapi'] = static fn () => $payload;
+			$sync = ( new AccessService() )->sync( true );
+			$this->assertTrue( $sync['ok'], $format . ': ' . $sync['message'] );
+			$this->assertSame( 3, AddressIndex::state()['rows'], $format );
+		}
+		$this->assertSame( array( 'finet_access', 'get_access_data', array( 'debug' => false ) ), $GLOBALS['wpfinet_fake_wpgetapi_calls'][0] );
+		$this->assertSame( array(), $this->calls, 'no direct HTTP request – WPGetAPI does the call' );
+
+		$svc = new AccessService();
+		$this->assertSame( 'Storgatan 12B: ansluten till Finet.', $svc->lookup( 'storgatan 12 b' )['message'] );
+		$this->assertSame( 'Storgatan 14: inte ansluten ännu.', $svc->lookup( 'Storgatan 14' )['message'] );
+		$this->assertSame( 'connected', $svc->lookup( 'Östra Långgatan 3' )['status'], 'API spelling without å/ä/ö still matches when unambiguous' );
+
+		foreach ( array( 'false' => false, 'error' => new \WP_Error( 'x', 'Nyckel saknas' ), 'html' => '<html>fel</html>', 'throw' => 'throw' ) as $case => $payload ) {
+			$GLOBALS['wpfinet_fake_wpgetapi'] = static function () use ( $payload ) {
+				if ( 'throw' === $payload ) { throw new \RuntimeException( 'boom' ); }
+				return $payload;
+			};
+			$sync = ( new AccessService() )->sync( true );
+			$this->assertFalse( $sync['ok'], $case );
+			$this->assertStringContainsString( 'Befintligt index behålls', $sync['message'], $case );
+			$this->assertSame( 3, AddressIndex::state()['rows'], $case . ': index kept' );
+		}
+		$GLOBALS['wpfinet_fake_wpgetapi'] = null;
+	}
+
+	public function test_folded_fallback_never_merges_two_streets(): void {
+		$this->configure( array( 'adapter' => 'mock' ) );
+		( new AccessService() )->sync( false );
+		$svc = new AccessService();
+		// Mock data has both Åtestvägen 5 (connected) and Atestvägen 5 (not connected).
+		$this->assertSame( 'connected', $svc->lookup( 'Åtestvägen 5' )['status'] );
+		$this->assertSame( 'not_connected', $svc->lookup( 'Atestvägen 5' )['status'] );
+		$this->assertSame( 'no_match', $svc->lookup( 'Ätestvägen 5' )['status'], 'ambiguous folded key gives no answer instead of a guess' );
+		$this->assertSame( 'connected', $svc->lookup( 'Testallen 12 b' )['status'] );
+		$this->assertSame( 'Exempelgatan 1: ansluten till Finet.', $svc->lookup( '  exempelgatan   1 , 612 30 Finspång' )['message'] );
+	}
+
+	public function test_migration_backfills_fold_key_for_30_rows(): void {
+		global $wpdb;
+		$this->configure( array( 'adapter' => 'mock' ) );
+		( new AccessService() )->sync( false );
+		$wpdb->query( "UPDATE " . AddressIndex::table() . " SET street_fold = ''" ); // As written by 3.0.
+		$this->assertSame( array(), AddressIndex::find_folded( 'testallen', 12 )['rows'] );
+		$this->assertGreaterThan( 0, AddressIndex::backfill_fold() );
+		$this->assertCount( 1, AddressIndex::find_folded( 'testallen', 12 )['rows'] );
+		$this->assertSame( 0, AddressIndex::backfill_fold(), 'idempotent' );
+	}
+
+	public function test_shortcode_attributes(): void {
+		Modules::update( array( 'access' => true ) );
+		$module = new AccessModule();
+		$html   = $module->render( '', array( 'theme' => 'dark', 'hide_label' => '1', 'hint' => '0', 'placeholder' => 'Din adress här', 'class' => 'hero x' ) );
+		$this->assertStringContainsString( 'wpfinet-access--dark', $html );
+		$this->assertStringContainsString( 'hero x', $html );
+		$this->assertStringContainsString( 'placeholder="Din adress här"', $html );
+		$this->assertMatchesRegularExpression( '/wpfinet-access__label[^"]*wpfinet-access__sr/', $html );
+		$this->assertMatchesRegularExpression( '/wpfinet-access__hint wpfinet-access__sr/', $html );
+		$plain = $module->render( '', array( 'theme' => '<script>' ) );
+		$this->assertStringContainsString( 'wpfinet-access--light', $plain );
+		$this->assertStringContainsString( 'placeholder="Skriv din adress (t.ex. Storgatan 12)"', $plain );
+	}
+
 	public function test_failures_keep_index_and_open_circuit(): void {
 		$this->configure( array( 'adapter' => 'mock' ) );
 		( new AccessService() )->sync( false );

@@ -17,7 +17,7 @@ use FinetTroubleshoot\Analytics\Database;
 use FinetTroubleshoot\PostTypes\GuidePostType;
 
 final class MigrationManager {
-	public const VERSION = '3.0.0';
+	public const VERSION = '3.1.0';
 
 	public function register_hooks(): void { add_action( 'admin_init', array( $this, 'maybe_migrate' ) ); }
 
@@ -44,6 +44,9 @@ final class MigrationManager {
 			}
 			( new Database() )->install();
 			foreach ( self::module_tables() as $installer ) { if ( is_callable( $installer ) ) { $installer(); } }
+			if ( version_compare( $from, '3.1.0', '<' ) ) {
+				$lines[] = sprintf( '3.0 → 3.1: accentokänslig nyckel ifylld för %d gatunamn i adressindexet.', \FinetTroubleshoot\Access\AddressIndex::backfill_fold() );
+			}
 			Capabilities::grant_administrators();
 			add_option( Modules::OPTION, Modules::defaults(), '', false );
 			if ( ! empty( get_option( 'finet_ts_settings', array() )['advanced']['delete_data'] ) ) {

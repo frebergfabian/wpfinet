@@ -31,7 +31,7 @@ final class AccessModule {
 
 	public static function ensure_schedule(): void {
 		$settings = AccessSettings::get();
-		$needs    = 'index' === $settings['mode'] || 'mock' === $settings['adapter'];
+		$needs    = AccessSettings::uses_index( $settings );
 		$next     = wp_next_scheduled( self::CRON );
 		if ( ! $needs ) {
 			if ( $next ) { wp_clear_scheduled_hook( self::CRON ); }
@@ -87,7 +87,11 @@ final class AccessModule {
 
 	/** @param array<string,string> $atts */
 	public function render( string $html, array $atts ): string {
-		$atts = shortcode_atts( array( 'title' => '', 'button' => __( 'Sök', 'finet-troubleshoot' ), 'label' => __( 'Din adress', 'finet-troubleshoot' ), 'class' => '' ), $atts, 'wpfinet_access_check' );
+		$atts = shortcode_atts( array( 'title' => '', 'button' => __( 'Sök', 'finet-troubleshoot' ), 'label' => __( 'Din adress', 'finet-troubleshoot' ), 'placeholder' => __( 'Skriv din adress (t.ex. Storgatan 12)', 'finet-troubleshoot' ), 'hide_label' => '0', 'hint' => '1', 'theme' => 'light', 'class' => '' ), $atts, 'wpfinet_access_check' );
+		$theme      = 'dark' === strtolower( (string) $atts['theme'] ) ? 'dark' : 'light';
+		$hide_label = in_array( strtolower( (string) $atts['hide_label'] ), array( '1', 'true', 'yes', 'ja' ), true );
+		$show_hint  = ! in_array( strtolower( (string) $atts['hint'] ), array( '0', 'false', 'no', 'nej' ), true );
+		$classes    = trim( 'wpfinet-access wpfinet-access--' . $theme . ' ' . implode( ' ', array_map( 'sanitize_html_class', preg_split( '/\s+/', (string) $atts['class'] ) ?: array() ) ) );
 		wp_enqueue_style( 'wpfinet-access' );
 		wp_enqueue_script( 'wpfinet-access' );
 		static $n = 0;
@@ -95,13 +99,13 @@ final class AccessModule {
 		$mock = 'mock' === AccessSettings::get()['adapter'];
 		ob_start();
 		?>
-		<section class="wpfinet-access <?php echo esc_attr( sanitize_html_class( $atts['class'] ) ); ?>" data-wpfinet-access data-endpoint="<?php echo esc_url( rest_url( 'wpfinet/v1/access/check' ) ); ?>">
+		<section class="<?php echo esc_attr( $classes ); ?>" data-wpfinet-access data-endpoint="<?php echo esc_url( rest_url( 'wpfinet/v1/access/check' ) ); ?>">
 			<?php if ( $atts['title'] ) : ?><h2 class="wpfinet-access__title"><?php echo esc_html( $atts['title'] ); ?></h2><?php endif; ?>
 			<form class="wpfinet-access__form" novalidate>
-				<label class="wpfinet-access__label" for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $atts['label'] ); ?></label>
-				<p class="wpfinet-access__hint" id="<?php echo esc_attr( $id ); ?>-hint"><?php esc_html_e( 'Gata, nummer och eventuell bokstav, till exempel Storgatan 12B.', 'finet-troubleshoot' ); ?></p>
+				<label class="wpfinet-access__label<?php echo $hide_label ? ' screen-reader-text wpfinet-access__sr' : ''; ?>" for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $atts['label'] ); ?></label>
+				<p class="wpfinet-access__hint<?php echo $show_hint ? '' : ' wpfinet-access__sr'; ?>" id="<?php echo esc_attr( $id ); ?>-hint"><?php esc_html_e( 'Gata, nummer och eventuell bokstav, till exempel Storgatan 12B.', 'finet-troubleshoot' ); ?></p>
 				<div class="wpfinet-access__row">
-					<input class="wpfinet-access__input" id="<?php echo esc_attr( $id ); ?>" name="address" type="text" inputmode="text" autocomplete="street-address" maxlength="<?php echo (int) Normalizer::MAX_LENGTH; ?>" required aria-describedby="<?php echo esc_attr( $id ); ?>-hint <?php echo esc_attr( $id ); ?>-result">
+					<input class="wpfinet-access__input" id="<?php echo esc_attr( $id ); ?>" name="address" type="text" inputmode="text" autocomplete="street-address" maxlength="<?php echo (int) Normalizer::MAX_LENGTH; ?>" placeholder="<?php echo esc_attr( $atts['placeholder'] ); ?>" required aria-describedby="<?php echo esc_attr( $id ); ?>-hint <?php echo esc_attr( $id ); ?>-result">
 					<button class="wpfinet-access__button" type="submit"><?php echo esc_html( $atts['button'] ); ?></button>
 				</div>
 				<div class="wpfinet-access__hp" aria-hidden="true"><label>Webbplats <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
