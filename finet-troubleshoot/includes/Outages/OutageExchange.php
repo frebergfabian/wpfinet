@@ -29,7 +29,7 @@ final class OutageExchange {
 			$clean[] = array(
 				'time'   => preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $time ) ? $time : '',
 				'text'   => sanitize_textarea_field( (string) ( $item['text'] ?? '' ) ),
-				'status' => in_array( $item['status'] ?? '', $statuses, true ) ? (string) $item['status'] : '',
+				'status' => \FinetTroubleshoot\Import\SchemaValidator::pick( $item['status'] ?? null, $statuses, '' ),
 				'author' => absint( $item['author'] ?? 0 ),
 				'public' => ! empty( $item['public'] ),
 			);
@@ -42,7 +42,7 @@ final class OutageExchange {
 		foreach ( array_slice( $outages, 0, 100 ) as $raw ) {
 			if ( ! is_array( $raw ) || empty( $raw['title'] ) || empty( $raw['external_id'] ) ) { ++$result['failed']; $result['items'][] = array( 'title' => __( 'Okänd driftstörning', 'finet-troubleshoot' ), 'status' => 'failed', 'message' => __( 'Saknar title eller external_id.', 'finet-troubleshoot' ) ); continue; }
 			$external = sanitize_title( (string) $raw['external_id'] ); $existing = get_posts( array( 'post_type' => OutageModule::POST_TYPE, 'post_status' => 'any', 'meta_key' => '_wpfinet_external_id', 'meta_value' => $external, 'fields' => 'ids', 'posts_per_page' => 1 ) );
-			$post_data = array( 'post_type' => OutageModule::POST_TYPE, 'post_title' => sanitize_text_field( (string) $raw['title'] ), 'post_name' => sanitize_title( (string) ( $raw['slug'] ?? $raw['title'] ) ), 'post_excerpt' => sanitize_textarea_field( (string) ( $raw['summary'] ?? '' ) ), 'post_content' => wp_kses_post( (string) ( $raw['content'] ?? '' ) ), 'post_status' => in_array( $raw['status'] ?? 'draft', array( 'publish', 'draft', 'private', 'future' ), true ) ? $raw['status'] : 'draft' );
+			$post_data = array( 'post_type' => OutageModule::POST_TYPE, 'post_title' => sanitize_text_field( (string) $raw['title'] ), 'post_name' => sanitize_title( (string) ( $raw['slug'] ?? $raw['title'] ) ), 'post_excerpt' => sanitize_textarea_field( (string) ( $raw['summary'] ?? '' ) ), 'post_content' => wp_kses_post( (string) ( $raw['content'] ?? '' ) ), 'post_status' => \FinetTroubleshoot\Import\SchemaValidator::pick( $raw['status'] ?? null, array( 'publish', 'draft', 'private', 'future' ), 'draft' ) );
 			if ( ! empty( $raw['published_at'] ) && strtotime( (string) $raw['published_at'] ) ) { $post_data['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( (string) $raw['published_at'] ) ); $post_data['post_date'] = get_date_from_gmt( $post_data['post_date_gmt'] ); }
 			if ( $existing ) { $post_data['ID'] = (int) $existing[0]; wp_save_post_revision( $post_data['ID'] ); $id = wp_update_post( wp_slash( $post_data ), true ); } else { $id = wp_insert_post( wp_slash( $post_data ), true ); }
 			if ( is_wp_error( $id ) ) { ++$result['failed']; $result['items'][] = array( 'title' => $post_data['post_title'], 'status' => 'failed', 'message' => $id->get_error_message() ); continue; }

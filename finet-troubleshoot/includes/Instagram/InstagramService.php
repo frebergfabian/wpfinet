@@ -177,7 +177,7 @@ final class InstagramService {
 		if ( ! $id || ! $permalink || ! in_array( wp_parse_url( $permalink, PHP_URL_HOST ), array( 'www.instagram.com', 'instagram.com' ), true ) ) {
 			return null;
 		}
-		$type   = in_array( $raw['media_type'] ?? '', array( 'IMAGE', 'VIDEO', 'CAROUSEL_ALBUM' ), true ) ? (string) $raw['media_type'] : 'IMAGE';
+		$type   = \FinetTroubleshoot\Import\SchemaValidator::pick( $raw['media_type'] ?? null, array( 'IMAGE', 'VIDEO', 'CAROUSEL_ALBUM' ), 'IMAGE' );
 		$source = (string) ( 'VIDEO' === $type ? ( $raw['thumbnail_url'] ?? '' ) : ( $raw['media_url'] ?? '' ) );
 		$file   = (string) ( $old[ $id ]['file'] ?? '' );
 		$dir    = self::upload_dir();

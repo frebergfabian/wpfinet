@@ -1,0 +1,16 @@
+{
+  "site": "https://staging.finet.se",
+  "pages": ["/", "/tjansteguide/", "/home/kundservice/", "/fragor-och-svar/", "/kontakta-oss/", "/driftstorningar/"],
+  "scenarios": ["before_consent", "reject", "accept_all"],
+  "selectors": {
+    "accept": ".wpfinet-consent [data-action=\"accept\"]",
+    "reject": ".wpfinet-consent [data-action=\"reject\"]"
+  },
+  "wordpress": {
+    "user": "skanner",
+    "application_password": "",
+    "endpoint": ""
+  },
+  "waitMs": 2500,
+  "timeoutMs": 30000
+}

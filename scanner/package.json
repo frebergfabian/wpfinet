@@ -1,0 +1,8 @@
+{
+  "name": "wpfinet-scanner",
+  "private": true,
+  "type": "module",
+  "description": "Headless cookie/storage scanner for WPFINET (runs outside WordPress).",
+  "scripts": { "scan": "node scan.mjs --config config.json" },
+  "dependencies": { "playwright": "^1.48.0" }
+}
