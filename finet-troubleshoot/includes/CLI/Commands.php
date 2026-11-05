@@ -102,7 +102,7 @@ final class Commands {
 	}
 
 	/**
-	 * Instagram: sync | status.
+	 * Instagram: sync | status | test (step-by-step connection test).
 	 *
 	 * @param array<int,string> $args
 	 */
@@ -112,6 +112,12 @@ final class Commands {
 		if ( 'sync' === ( $args[0] ?? 'status' ) ) {
 			$result = $service->sync();
 			$result['ok'] ? \WP_CLI::success( $result['message'] ) : \WP_CLI::error( $result['message'], false );
+			return;
+		}
+		if ( 'test' === ( $args[0] ?? '' ) ) {
+			$result = $service->test_connection();
+			foreach ( $result['steps'] as $step ) { \WP_CLI::log( sprintf( '[%s] %s: %s', null === $step['ok'] ? 'info' : ( $step['ok'] ? ' ok ' : 'FEL ' ), $step['label'], $step['detail'] ) ); }
+			$result['ok'] ? \WP_CLI::success( 'Inga fel hittades.' ) : \WP_CLI::error( 'Fel hittades – se ovan.', false );
 			return;
 		}
 		\WP_CLI::line( (string) wp_json_encode( $service->health(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) );

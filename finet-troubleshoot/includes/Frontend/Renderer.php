@@ -97,14 +97,32 @@ final class Renderer {
 		return $settings;
 	}
 	/** @param array<string,mixed> $appearance */
+	/**
+	 * Inline custom properties from the appearance settings. 3.1: values equal to the 2.x defaults (which were stored on
+	 * every 2.x site) are treated as "not customised", so the Finet look of the stylesheet applies. Values an
+	 * administrator actually changed still override it.
+	 */
 	private function css_variables( array $appearance ): string {
-		$color = static fn ( string $key, string $fallback ): string => \FinetTroubleshoot\Import\SchemaValidator::css_color( (string) ( $appearance[ $key ] ?? '' ) ) ?: $fallback;
-		$card  = $color( 'card_background', '#ffffff' );
-		$properties = array(
-			'--wpfinet-primary' => $color( 'primary_color', '#005baa' ), '--wpfinet-background' => $color( 'background', 'transparent' ), '--wpfinet-card-background' => $card, '--wpfinet-border' => $color( 'border_color', '#d8dee7' ), '--wpfinet-radius' => absint( $appearance['radius'] ?? 8 ) . 'px', '--wpfinet-space' => absint( $appearance['spacing'] ?? 24 ) . 'px', '--wpfinet-max-width' => absint( $appearance['max_width'] ?? 760 ) . 'px',
-			// 3.0: the stylesheet reads --wpfinet-surface; 2.0.1 never mapped card_background to it (B6).
-			'--wpfinet-surface' => $card,
-		);
+		$legacy = array( 'primary_color' => '#005baa', 'background' => 'transparent', 'card_background' => '#ffffff', 'border_color' => '#d8dee7', 'radius' => 8, 'spacing' => 24, 'max_width' => 760 );
+		$custom = static function ( string $key ) use ( $appearance, $legacy ) {
+			if ( ! isset( $appearance[ $key ] ) || '' === $appearance[ $key ] ) { return null; }
+			$value = $appearance[ $key ];
+			return strtolower( (string) $value ) === strtolower( (string) $legacy[ $key ] ) ? null : $value;
+		};
+		$properties = array();
+		foreach ( array( 'primary_color' => '--wpfinet-primary', 'background' => '--wpfinet-background', 'card_background' => '--wpfinet-surface', 'border_color' => '--wpfinet-border' ) as $key => $property ) {
+			$value = $custom( $key );
+			$color = null === $value ? '' : \FinetTroubleshoot\Import\SchemaValidator::css_color( (string) $value );
+			if ( '' !== $color ) {
+				$properties[ $property ] = $color;
+				if ( 'primary_color' === $key ) { $properties['--wpfinet-primary-hover'] = $color; }
+				if ( 'card_background' === $key ) { $properties['--wpfinet-card-background'] = $color; }
+			}
+		}
+		foreach ( array( 'radius' => array( '--wpfinet-radius', 0, 48 ), 'spacing' => array( '--wpfinet-space', 8, 64 ), 'max_width' => array( '--wpfinet-max-width', 280, 1440 ) ) as $key => [ $property, $min, $max ] ) {
+			$value = $custom( $key );
+			if ( null !== $value ) { $properties[ $property ] = min( $max, max( $min, absint( $value ) ) ) . 'px'; }
+		}
 		$style = '';
 		foreach ( $properties as $property => $value ) { $style .= $property . ':' . sanitize_text_field( (string) $value ) . ';'; }
 		return $style;

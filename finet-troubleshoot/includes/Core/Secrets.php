@@ -22,6 +22,7 @@ final class Secrets {
 		'access_api_username' => 'WPFINET_ACCESS_API_USERNAME',
 		'instagram_token'     => 'WPFINET_INSTAGRAM_TOKEN',
 		'instagram_app_secret' => 'WPFINET_INSTAGRAM_APP_SECRET',
+		'facebook_app_secret' => 'WPFINET_FACEBOOK_APP_SECRET',
 	);
 
 	public static function get( string $name ): string {
@@ -64,7 +65,23 @@ final class Secrets {
 	}
 
 	public static function available(): bool {
-		return function_exists( 'sodium_crypto_secretbox' );
+		return function_exists( 'sodium_crypto_secretbox' ) || self::openssl_available();
+	}
+
+	private static function openssl_available(): bool {
+		return function_exists( 'openssl_encrypt' ) && in_array( 'aes-256-gcm', array_map( 'strtolower', (array) openssl_get_cipher_methods() ), true );
+	}
+
+	/**
+	 * Detailed status for admin screens: 'constant', 'ok', 'undecryptable' (stored, but the AUTH_KEY/SECURE_AUTH_SALT
+	 * in wp-config.php changed or the crypto extension is missing), or 'none'.
+	 */
+	public static function status( string $name ): string {
+		$source = self::source( $name );
+		if ( 'database' !== $source ) {
+			return $source;
+		}
+		return '' === self::get( $name ) ? 'undecryptable' : 'ok';
 	}
 
 	/** @return array<string,string> */
@@ -73,21 +90,48 @@ final class Secrets {
 		return is_array( $store ) ? $store : array();
 	}
 
+	private static function material(): string {
+		return ( defined( 'AUTH_KEY' ) ? AUTH_KEY : '' ) . '|' . ( defined( 'SECURE_AUTH_SALT' ) ? SECURE_AUTH_SALT : '' ) . '|wpfinet-secrets-v1';
+	}
+
 	private static function key(): string {
-		$material = ( defined( 'AUTH_KEY' ) ? AUTH_KEY : '' ) . '|' . ( defined( 'SECURE_AUTH_SALT' ) ? SECURE_AUTH_SALT : '' ) . '|wpfinet-secrets-v1';
-		return sodium_crypto_generichash( $material, '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES );
+		return sodium_crypto_generichash( self::material(), '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES );
+	}
+
+	/** Fallback when libsodium is not loaded (e.g. php_sodium.dll not enabled on Windows): AES-256-GCM via OpenSSL. */
+	private static function encrypt_openssl( string $plain ): string {
+		$key   = hash( 'sha256', self::material(), true );
+		$iv    = random_bytes( 12 );
+		$tag   = '';
+		$box   = openssl_encrypt( $plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag );
+		return false === $box ? '' : 'v2:' . base64_encode( $iv . $tag . $box ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+	}
+
+	private static function decrypt_openssl( string $cipher ): string {
+		if ( ! self::openssl_available() ) {
+			return '';
+		}
+		$raw = base64_decode( substr( $cipher, 3 ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		if ( false === $raw || strlen( $raw ) <= 28 ) {
+			return '';
+		}
+		$plain = openssl_decrypt( substr( $raw, 28 ), 'aes-256-gcm', hash( 'sha256', self::material(), true ), OPENSSL_RAW_DATA, substr( $raw, 0, 12 ), substr( $raw, 12, 16 ) );
+		return false === $plain ? '' : $plain;
 	}
 
 	private static function encrypt( string $plain ): string {
-		if ( ! self::available() ) {
-			return '';
+		if ( ! function_exists( 'sodium_crypto_secretbox' ) ) {
+			return self::openssl_available() ? self::encrypt_openssl( $plain ) : '';
 		}
 		$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
 		return 'v1:' . base64_encode( $nonce . sodium_crypto_secretbox( $plain, $nonce, self::key() ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 
 	private static function decrypt( string $cipher ): string {
-		if ( ! self::available() || ! str_starts_with( $cipher, 'v1:' ) ) {
+		if ( str_starts_with( $cipher, 'v2:' ) ) {
+			return self::decrypt_openssl( $cipher );
+		}
+		if ( ! function_exists( 'sodium_crypto_secretbox' ) || ! str_starts_with( $cipher, 'v1:' ) ) {
 			return '';
 		}
 		$raw = base64_decode( substr( $cipher, 3 ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode

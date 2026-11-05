@@ -36,6 +36,21 @@ try {
 	check('no cookies set by WPFINET for visitor', (await ctx.cookies()).every((c) => !/wpfinet|finet/i.test(c.name)));
 	check('no JS errors on front end', errors.length === 0, errors.join('; '));
 
+	// Outage banner: close really hides it, stays closed for the session, returns in a new session.
+	await page.goto(`${B}/`);
+	const banner = page.locator('[data-wpfinet-banner]');
+	check('banner visible', await banner.isVisible());
+	check('banner is a labelled region', (await banner.getAttribute('role')) === 'region' && !!(await banner.getAttribute('aria-label')));
+	await page.getByRole('button', { name: 'Stäng driftmeddelande' }).click();
+	check('banner close hides it', !(await banner.isVisible()) && (await banner.boundingBox()) === null);
+	await page.reload();
+	check('banner stays closed in the same session', !(await page.locator('[data-wpfinet-banner]').isVisible()));
+	const fresh = await browser.newPage({ viewport: { width: 390, height: 844 } });
+	await fresh.goto(`${B}/`);
+	check('banner shown again in a new session', await fresh.locator('[data-wpfinet-banner]').isVisible());
+	check('banner fits a phone (no overflow, close ≥ 44px)', await fresh.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.querySelector('[data-wpfinet-banner-close]').getBoundingClientRect().width >= 44));
+	await fresh.close();
+
 	// Address check (mock data).
 	await page.goto(`${B}/adresskoll/`);
 	const input = page.getByLabel('Din adress');
