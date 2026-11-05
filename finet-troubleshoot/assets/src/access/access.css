@@ -1,0 +1,19 @@
+.wpfinet-access{--wpfinet-primary:#06284d;--wpfinet-ok:#19633a;--wpfinet-warn:#7a4300;--wpfinet-error:#a4231b;--wpfinet-border:#c9d2dc;max-width:640px;margin:1.5rem 0;font-family:inherit;color:inherit}
+.wpfinet-access__title{margin:0 0 .75rem;font-weight:700;font-size:1.35em;line-height:1.3;font-family:inherit}
+.wpfinet-access__label{display:block;font-weight:700}
+.wpfinet-access__hint{margin:.25rem 0 .5rem;font-size:.92em;opacity:.85}
+.wpfinet-access__row{display:flex;gap:.5rem;flex-wrap:wrap}
+.wpfinet-access__input{flex:1 1 240px;min-height:46px;padding:.6rem .8rem;border:1px solid var(--wpfinet-border);border-radius:7px;font:inherit}
+.wpfinet-access__input:focus-visible,.wpfinet-access__button:focus-visible,.wpfinet-access__cta:focus-visible{outline:3px solid #f47c20;outline-offset:2px}
+.wpfinet-access__input[aria-invalid=true]{border-color:var(--wpfinet-error)}
+.wpfinet-access__button{min-height:46px;padding:.6rem 1.2rem;border:1px solid var(--wpfinet-primary);border-radius:7px;background:var(--wpfinet-primary);color:#fff;font-weight:600;font-size:1em;line-height:1.2;font-family:inherit;cursor:pointer}
+.wpfinet-access__button[disabled]{opacity:.7;cursor:progress}
+.wpfinet-access__hp{position:absolute!important;left:-10000px!important;width:1px;height:1px;overflow:hidden}
+.wpfinet-access__result:not(:empty){margin-top:1rem;padding:1rem;border-left:4px solid var(--wpfinet-border);background:#f6f8fa}
+.wpfinet-access__result.is-connected{border-color:var(--wpfinet-ok);background:#eaf6ee}
+.wpfinet-access__result.is-not_connected,.wpfinet-access__result.is-no_match{border-color:var(--wpfinet-primary)}
+.wpfinet-access__result.is-invalid,.wpfinet-access__result.is-rate_limited,.wpfinet-access__result.is-unavailable{border-color:var(--wpfinet-warn);background:#fff6ea}
+.wpfinet-access__message{margin:0 0 .5rem;font-weight:600}
+.wpfinet-access__cta{display:inline-block;padding:.5rem 1rem;border-radius:7px;background:var(--wpfinet-primary);color:#fff;text-decoration:none;font-weight:600}
+.wpfinet-access__test{margin:.5rem 0 0;font-size:.85em;opacity:.8}
+@media(max-width:480px){.wpfinet-access__button{width:100%}}

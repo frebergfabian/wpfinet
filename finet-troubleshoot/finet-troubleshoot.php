@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Finet Troubleshoot
+ * Plugin Name: WPFINET (Finet Troubleshoot)
  * Plugin URI:  https://github.com/fabianfreberg/finet-troubleshoot
- * Description: Interaktiva, nodbaserade felsökningsguider för WordPress.
- * Version:     2.0.1
+ * Description: Felsökningsguider, driftstörningar, adressökning, Instagramflöde och samtyckeshantering för Finet. Uppgradering av Finet Troubleshoot 2.x – samma pluginidentitet och data.
+ * Version:     3.0.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author:      Fabian Freberg
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'FINET_TS_VERSION', '2.0.1' );
+define( 'FINET_TS_VERSION', '3.0.0' );
 define( 'FINET_TS_FILE', __FILE__ );
 define( 'FINET_TS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FINET_TS_URL', plugin_dir_url( __FILE__ ) );

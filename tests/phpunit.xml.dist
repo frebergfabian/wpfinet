@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="php/bootstrap.php" colors="true" beStrictAboutOutputDuringTests="false" failOnWarning="false" convertWarningsToExceptions="false" convertNoticesToExceptions="false" convertDeprecationsToExceptions="false">
+  <testsuites>
+    <testsuite name="contract"><directory suffix="Test.php">php/Contract</directory></testsuite>
+    <testsuite name="unit"><directory suffix="Test.php">php/Unit</directory></testsuite>
+    <testsuite name="integration"><directory suffix="Test.php">php/Integration</directory></testsuite>
+  </testsuites>
+</phpunit>

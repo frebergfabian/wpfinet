@@ -12,7 +12,7 @@ namespace FinetTroubleshoot\Outages;
 final class OutageRepository {
 	/** @return array<int,\WP_Post> */
 	public function find( string $bucket = 'current', array $filters = array(), int $limit = 20 ): array {
-		$key = 'wpfinet_outages_' . md5( wp_json_encode( array( $bucket, $filters, $limit ) ) ); $cached = get_transient( $key );
+		$key = 'wpfinet_outages_' . md5( wp_json_encode( array( $bucket, $filters, $limit, self::generation() ) ) ); $cached = get_transient( $key );
 		if ( is_array( $cached ) ) { return $cached; }
 		$args = array( 'post_type' => OutageModule::POST_TYPE, 'post_status' => 'publish', 'posts_per_page' => min( 100, max( 1, $limit ) ), 'orderby' => array( 'meta_value_num' => 'ASC', 'date' => 'DESC' ), 'meta_key' => OutageModule::META_START, 'no_found_rows' => true );
 		$tax_query = array();
@@ -46,6 +46,8 @@ final class OutageRepository {
 			'id' => $post->ID, 'title' => $post->post_title, 'url' => get_permalink( $post ), 'type' => (string) get_post_meta( $post->ID, OutageModule::META_TYPE, true ), 'status' => (string) get_post_meta( $post->ID, OutageModule::META_STATUS, true ), 'classification' => $this->classify( $post ), 'priority' => (string) get_post_meta( $post->ID, OutageModule::META_PRIORITY, true ), 'start' => $this->start( $post ), 'estimated_end' => (string) get_post_meta( $post->ID, OutageModule::META_ESTIMATED_END, true ), 'actual_end' => (string) get_post_meta( $post->ID, OutageModule::META_ACTUAL_END, true ), 'providers' => wp_get_post_terms( $post->ID, OutageModule::TAX_PROVIDER, array( 'fields' => 'names' ) ), 'services' => wp_get_post_terms( $post->ID, OutageModule::TAX_SERVICE, array( 'fields' => 'names' ) ), 'areas' => wp_get_post_terms( $post->ID, OutageModule::TAX_AREA, array( 'fields' => 'names' ) ), 'area_note' => (string) get_post_meta( $post->ID, OutageModule::META_AREA_NOTE, true ), 'summary' => $post->post_excerpt, 'content' => $detail ? apply_filters( 'the_content', $post->post_content ) : '', 'timeline' => $timeline,
 		);
 	}
-	public function flush(): void { global $wpdb; $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpfinet_outages_%' OR option_name LIKE '_transient_timeout_wpfinet_outages_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+	/** Cache generation: bumping it invalidates every cached query, also with a persistent object cache (B24). */
+	public static function generation(): int { return (int) get_option( 'wpfinet_outages_cache_gen', 1 ); }
+	public function flush(): void { update_option( 'wpfinet_outages_cache_gen', self::generation() + 1, true ); global $wpdb; $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpfinet_outages_%' OR option_name LIKE '_transient_timeout_wpfinet_outages_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 }

@@ -36,8 +36,9 @@ final class ImporterV1 {
 			GuidePostType::META_START_NODE  => $guide['start_node'],
 			GuidePostType::META_NODES       => $guide['nodes'],
 			GuidePostType::META_SETTINGS    => $guide['settings'],
-			GuidePostType::META_SCHEMA      => in_array( $schema_version, array( '1.0', '2.0' ), true ) ? $schema_version : '1.0',
+			GuidePostType::META_SCHEMA      => in_array( $schema_version, array( '1.0', '2.0', '3.0' ), true ) ? $schema_version : '1.0',
 		);
+		if ( ! empty( $guide['variables'] ) && is_array( $guide['variables'] ) ) { $metadata[ GuidePostType::META_VARIABLES ] = $guide['variables']; }
 		foreach ( $metadata as $key => $value ) {
 			update_post_meta( $post_id, $key, $value );
 			if ( get_post_meta( $post_id, $key, true ) !== $value ) {

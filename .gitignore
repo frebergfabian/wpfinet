@@ -1,8 +1,10 @@
-/vendor/
-/node_modules/
-/.test-env/
-/dist/
-/scanner/node_modules/
-/scanner/results/
 *.log
 .phpunit.result.cache
+/.test-env/
+/dist/
+/node_modules/
+/scanner/node_modules/
+/scanner/results/
+/vendor/
+node_modules/
+scanner/results/

@@ -98,8 +98,12 @@ final class Renderer {
 	}
 	/** @param array<string,mixed> $appearance */
 	private function css_variables( array $appearance ): string {
+		$color = static fn ( string $key, string $fallback ): string => \FinetTroubleshoot\Import\SchemaValidator::css_color( (string) ( $appearance[ $key ] ?? '' ) ) ?: $fallback;
+		$card  = $color( 'card_background', '#ffffff' );
 		$properties = array(
-			'--wpfinet-primary' => $appearance['primary_color'] ?? '#005baa', '--wpfinet-background' => $appearance['background'] ?? 'transparent', '--wpfinet-card-background' => $appearance['card_background'] ?? '#ffffff', '--wpfinet-border' => $appearance['border_color'] ?? '#d8dee7', '--wpfinet-radius' => absint( $appearance['radius'] ?? 8 ) . 'px', '--wpfinet-space' => absint( $appearance['spacing'] ?? 24 ) . 'px', '--wpfinet-max-width' => absint( $appearance['max_width'] ?? 760 ) . 'px',
+			'--wpfinet-primary' => $color( 'primary_color', '#005baa' ), '--wpfinet-background' => $color( 'background', 'transparent' ), '--wpfinet-card-background' => $card, '--wpfinet-border' => $color( 'border_color', '#d8dee7' ), '--wpfinet-radius' => absint( $appearance['radius'] ?? 8 ) . 'px', '--wpfinet-space' => absint( $appearance['spacing'] ?? 24 ) . 'px', '--wpfinet-max-width' => absint( $appearance['max_width'] ?? 760 ) . 'px',
+			// 3.0: the stylesheet reads --wpfinet-surface; 2.0.1 never mapped card_background to it (B6).
+			'--wpfinet-surface' => $card,
 		);
 		$style = '';
 		foreach ( $properties as $property => $value ) { $style .= $property . ':' . sanitize_text_field( (string) $value ) . ';'; }

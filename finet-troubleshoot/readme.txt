@@ -1,10 +1,10 @@
-=== Finet Troubleshoot ===
+=== WPFINET (Finet Troubleshoot) ===
 Contributors: fabianfreberg
 Tags: troubleshoot, support, guide, flow, elementor
 Requires at least: 6.5
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.0.1
+Stable tag: 3.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ Ja. Exportera guiden som JSON och importera den på den andra webbplatsen.
 3. En publicerad guide på mobil.
 
 == Changelog ==
+
+= 3.0.0 =
+* WPFINET 3.0: rättar bl.a. driftstörningssidor (HTTP 500), guidebyggaren och inställningsflikar; nya moduler för adressökning, Instagram och samtycke (avstängda som standard).
+
 
 = 2.0.1 =
 * Rättar adminflikar, driftbanner, driftstörningspermalänkar och dokumentationslänk.

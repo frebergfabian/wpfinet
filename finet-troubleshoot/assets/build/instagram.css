@@ -1,0 +1,14 @@
+.wpfinet-instagram{--wpfinet-ig-columns:3;margin:1.5rem 0;font-family:inherit}
+.wpfinet-instagram__title{margin:0 0 1rem;font-weight:700;font-size:1.35em;line-height:1.3;font-family:inherit}
+.wpfinet-instagram__list{display:grid;grid-template-columns:repeat(var(--wpfinet-ig-columns),minmax(0,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.wpfinet-instagram--list .wpfinet-instagram__list{grid-template-columns:1fr}
+.wpfinet-instagram--list .wpfinet-instagram__item{display:grid;grid-template-columns:minmax(120px,240px) 1fr;gap:1rem;align-items:start}
+.wpfinet-instagram__link{position:relative;display:block;overflow:hidden;border-radius:8px;aspect-ratio:1/1;background:#eef1f4}
+.wpfinet-instagram__link img{display:block;width:100%;height:100%;object-fit:cover}
+.wpfinet-instagram__link:focus-visible{outline:3px solid #f47c20;outline-offset:2px}
+.wpfinet-instagram__badge{position:absolute;top:8px;right:8px;padding:2px 8px;border-radius:99px;background:rgb(0 0 0 / 65%);color:#fff;font-size:.75em;font-weight:600}
+.wpfinet-instagram__meta{margin-top:.5rem;font-size:.9em}
+.wpfinet-instagram__meta time{display:block;opacity:.75}
+.wpfinet-instagram__meta p{margin:.25rem 0 0}
+.wpfinet-instagram__more,.wpfinet-instagram__fallback{margin-top:1rem}
+@media(max-width:600px){.wpfinet-instagram__list{grid-template-columns:repeat(2,minmax(0,1fr))}.wpfinet-instagram--list .wpfinet-instagram__item{grid-template-columns:1fr}}
