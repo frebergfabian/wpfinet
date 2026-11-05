@@ -83,6 +83,12 @@
 .wpf-actions { display: flex; flex-wrap: wrap; gap: var(--wpf-space-2); align-items: center; }
 .wpf-preview { max-height: 360px; overflow: auto; padding: var(--wpf-space-3); border-radius: var(--wpf-radius-s); background: var(--wpf-color-canvas); font-size: 12px; }
 
+.wpf-grid .wpf-field input:not([type=checkbox]):not([type=radio]), .wpf-grid .wpf-field select, .wpf-grid .wpf-field textarea { width: 100%; }
+.wpf-page select { max-width: 100%; }
+.wpf-section-title { margin: var(--wpf-space-6) 0 var(--wpf-space-2); font-size: var(--wpf-font-l); }
+.wpf-module__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--wpf-space-2); }
+.wpf-module .wpf-card__title { margin-bottom: var(--wpf-space-3); }
+
 @media (max-width: 782px) {
 	.wpf-shell { margin-left: -10px; padding: var(--wpf-space-3); }
 	.wpf-card { padding: var(--wpf-space-4); }

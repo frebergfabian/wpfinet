@@ -18,7 +18,7 @@ final class ConsentModule {
 	public function register_hooks(): void {
 		add_action( 'rest_api_init', array( $this, 'routes' ) );
 		add_action( 'wpfinet_daily_maintenance', array( $this, 'maintenance' ) );
-		add_filter( 'wpfinet_shortcode_wpfinet_cookie_policy', static fn ( string $h, array $a ): string => Policy::render( false ), 10, 2 );
+		add_filter( 'wpfinet_shortcode_wpfinet_cookie_policy', array( $this, 'policy_shortcode' ), 10, 2 );
 		add_filter( 'wpfinet_shortcode_wpfinet_cookie_settings', array( $this, 'settings_button' ), 10, 2 );
 		add_action( 'wp', array( $this, 'maybe_activate' ) );
 	}
@@ -39,7 +39,19 @@ final class ConsentModule {
 		wp_enqueue_script( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.js', array(), FINET_TS_VERSION, array( 'in_footer' => true ) );
 	}
 
+	/** In preview mode visitors keep seeing the existing (WPConsent) policy; only WPFINET admins see the new one. */
+	public function policy_shortcode( string $html, array $atts ): string {
+		if ( ! ConsentService::instance()->internal_active() ) {
+			return current_user_can( 'edit_posts' ) ? '<p class="wpfinet-module-off">' . esc_html__( 'WPFINET-cookiepolicyn visas för besökare när samtyckeshanteraren är live.', 'finet-troubleshoot' ) . '</p>' : '';
+		}
+		wp_enqueue_style( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.css', array(), FINET_TS_VERSION );
+		return Policy::render( false );
+	}
+
 	public function settings_button( string $html = '', array $atts = array() ): string {
+		if ( ! ConsentService::instance()->internal_active() ) {
+			return '';
+		}
 		$label = sanitize_text_field( (string) ( $atts['label'] ?? ConsentSettings::get()['settings_label'] ) );
 		return '<button type="button" class="wpfinet-consent-link" data-wpfinet-consent-open>' . esc_html( $label ) . '</button>';
 	}

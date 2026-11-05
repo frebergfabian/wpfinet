@@ -116,4 +116,21 @@ final class Commands {
 		}
 		\WP_CLI::line( (string) wp_json_encode( $service->health(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) );
 	}
+
+	/**
+	 * Creates or removes fictitious test content for manual testing (see WPFinet → Diagnos). Refuses in production.
+	 *
+	 * ## OPTIONS
+	 * <action>
+	 * : create or remove
+	 *
+	 * @param array<int,string> $args
+	 */
+	public function testdata( array $args ): void {
+		$action = $args[0] ?? '';
+		if ( ! in_array( $action, array( 'create', 'remove' ), true ) ) { \WP_CLI::error( 'Ange create eller remove.' ); }
+		$result = 'create' === $action ? \FinetTroubleshoot\Admin\TestData::create() : \FinetTroubleshoot\Admin\TestData::remove();
+		foreach ( $result['lines'] as $line ) { \WP_CLI::log( $line ); }
+		$result['ok'] ? \WP_CLI::success( 'Klart.' ) : \WP_CLI::error( 'Avbröts.' );
+	}
 }

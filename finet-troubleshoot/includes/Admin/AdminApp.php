@@ -29,6 +29,7 @@ final class AdminApp {
 		add_action( 'admin_post_wpfinet_run_inventory', array( $this, 'run_inventory' ) );
 		add_action( 'admin_post_wpfinet_download_diagnostics', array( $this, 'download_diagnostics' ) );
 		add_action( 'admin_post_wpfinet_grant_editors', array( $this, 'grant_editors' ) );
+		add_action( 'admin_post_wpfinet_testdata', array( $this, 'testdata' ) );
 		add_action( 'admin_notices', array( $this, 'notices' ) );
 		\FinetTroubleshoot\Access\AccessAdmin::register_hooks();
 		\FinetTroubleshoot\Instagram\InstagramAdmin::register_hooks();
@@ -116,6 +117,8 @@ final class AdminApp {
 			'consent_blocked'   => array( 'error', __( 'Samtyckeshanteraren kan inte gå live förrän du bekräftar att den har verifierats och att WPConsent stängs av samtidigt (annars visas två banners).', 'finet-troubleshoot' ) ),
 			'migrated'          => array( 'success', __( 'Migreringen kördes. Se loggen nedan.', 'finet-troubleshoot' ) ),
 			'inventory_done'    => array( 'success', __( 'Migreringsrapporten är uppdaterad.', 'finet-troubleshoot' ) ),
+			'testdata'          => array( 'success', __( 'Testdata uppdaterad – se resultatet under Testdata.', 'finet-troubleshoot' ) ),
+			'testdata_refused'  => array( 'error', __( 'Testdata kan inte skapas i en produktionsmiljö.', 'finet-troubleshoot' ) ),
 			'editors_granted'   => array( 'success', __( 'Redaktörer har fått WPFINET-behörigheter för guider och driftstörningar.', 'finet-troubleshoot' ) ),
 		);
 		if ( isset( $messages[ $notice ] ) ) {
@@ -173,6 +176,13 @@ final class AdminApp {
 		self::back( 'wpfinet-integrations', 'editors_granted' );
 	}
 
+	public function testdata(): void {
+		self::guard( 'wpfinet_testdata' );
+		$result = ! empty( $_POST['remove'] ) ? TestData::remove() : TestData::create(); // phpcs:ignore WordPress.Security.NonceVerification -- verified in guard().
+		set_transient( 'wpfinet_testdata_result_' . get_current_user_id(), $result['lines'], 10 * MINUTE_IN_SECONDS );
+		self::back( 'wpfinet-diagnostics', $result['ok'] ? 'testdata' : 'testdata_refused' );
+	}
+
 	public function run_migration(): void {
 		self::guard( 'wpfinet_run_migration' );
 		( new MigrationManager() )->run();
@@ -219,9 +229,13 @@ final class AdminApp {
 		View::card_close();
 		submit_button( __( 'Spara moduler', 'finet-troubleshoot' ) );
 		echo '</form>';
+		View::card_open( __( 'Roller', 'finet-troubleshoot' ) );
+		$editor = get_role( 'editor' );
+		echo '<p>' . esc_html( $editor && $editor->has_cap( 'manage_wpfinet_guides' ) ? __( 'Rollen Redaktör har WPFINET-behörigheter för guider och driftstörningar.', 'finet-troubleshoot' ) : __( 'Rollen Redaktör saknar WPFINET-behörigheter. Ge dem innan strikta behörigheter slås på.', 'finet-troubleshoot' ) ) . '</p>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'wpfinet_grant_editors' );
 		echo '<input type="hidden" name="action" value="wpfinet_grant_editors"><button class="button">' . esc_html__( 'Ge rollen Redaktör WPFINET-behörigheter', 'finet-troubleshoot' ) . '</button></form>';
+		View::card_close();
 		View::card_open( __( 'Integrationer', 'finet-troubleshoot' ) );
 		$status  = Diagnostics::integrations();
 		echo '<table class="wpf-table"><thead><tr><th>' . esc_html__( 'Integration', 'finet-troubleshoot' ) . '</th><th>' . esc_html__( 'Status', 'finet-troubleshoot' ) . '</th><th>' . esc_html__( 'Kommentar', 'finet-troubleshoot' ) . '</th></tr></thead><tbody>';
@@ -265,7 +279,7 @@ final class AdminApp {
 		wp_nonce_field( 'wpfinet_run_inventory' );
 		echo '<input type="hidden" name="action" value="wpfinet_run_inventory"><button class="button button-primary">' . esc_html__( 'Kör inventering', 'finet-troubleshoot' ) . '</button></form>';
 		if ( $report ) {
-			echo '<p class="wpf-muted">' . esc_html( sprintf( __( 'Senast körd: %s', 'finet-troubleshoot' ), (string) $report['generated_at'] ) ) . '</p>';
+			echo '<p class="wpf-muted">' . esc_html( sprintf( __( 'Senast körd: %s', 'finet-troubleshoot' ), View::time_ago( (int) strtotime( (string) $report['generated_at'] ) ) ) ) . '</p>';
 			echo '<div class="wpf-kpis">';
 			View::kpi( (string) array_sum( (array) ( $report['counts']['guides'] ?? array() ) ), __( 'guider', 'finet-troubleshoot' ) );
 			View::kpi( (string) array_sum( (array) ( $report['counts']['outages'] ?? array() ) ), __( 'driftstörningar', 'finet-troubleshoot' ) );
@@ -297,13 +311,30 @@ final class AdminApp {
 		}
 		View::card_close();
 
+		if ( TestData::allowed() ) {
+			View::card_open( __( 'Testdata för manuell test', 'finet-troubleshoot' ) );
+			echo '<p>' . esc_html__( 'Skapar privata testsidor, påhittade testadresser för adressökningen (bara om ingen endpoint är konfigurerad), påhittade Instagraminlägg (bara om inget konto är anslutet) och en spårartestsida för samtyckesblockeringen. Allt märks och kan tas bort. Finns inte i miljötypen production.', 'finet-troubleshoot' ) . '</p>';
+			echo '<div class="wpf-actions"><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'wpfinet_testdata' );
+			echo '<input type="hidden" name="action" value="wpfinet_testdata"><button class="button">' . esc_html__( 'Skapa testdata', 'finet-troubleshoot' ) . '</button></form><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'wpfinet_testdata' );
+			echo '<input type="hidden" name="action" value="wpfinet_testdata"><input type="hidden" name="remove" value="1"><button class="button button-link-delete">' . esc_html__( 'Ta bort testdata', 'finet-troubleshoot' ) . '</button></form></div>';
+			$lines = get_transient( 'wpfinet_testdata_result_' . get_current_user_id() );
+			if ( is_array( $lines ) ) {
+				echo '<ul class="wpf-log">';
+				foreach ( $lines as $line ) { echo '<li>' . make_clickable( esc_html( $line ) ) . '</li>'; } // phpcs:ignore WordPress.Security.EscapeOutput -- escaped before linkifying.
+				echo '</ul>';
+			}
+			View::card_close();
+		}
+
 		View::card_open( __( 'Händelselogg', 'finet-troubleshoot' ) );
 		$entries = array_slice( Logger::entries(), 0, 50 );
 		if ( ! $entries ) {
 			echo '<p class="wpf-muted">' . esc_html__( 'Inga loggposter ännu.', 'finet-troubleshoot' ) . '</p>';
 		} else {
 			echo '<table class="wpf-table"><tbody>';
-			foreach ( $entries as $e ) { echo '<tr><td><time>' . esc_html( $e['time'] ) . '</time></td><td>' . View::badge( $e['channel'], 'muted' ) . '</td><td>' . View::badge( $e['level'], 'error' === $e['level'] ? 'error' : ( 'warning' === $e['level'] ? 'warn' : 'muted' ) ) . '</td><td>' . esc_html( $e['message'] ) . '</td></tr>'; } // phpcs:ignore WordPress.Security.EscapeOutput
+			foreach ( $entries as $e ) { echo '<tr><td><time datetime="' . esc_attr( $e['time'] ) . '">' . esc_html( wp_date( 'Y-m-d H:i:s', (int) strtotime( $e['time'] ) ) ) . '</time></td><td>' . View::badge( $e['channel'], 'muted' ) . '</td><td>' . View::badge( $e['level'], 'error' === $e['level'] ? 'error' : ( 'warning' === $e['level'] ? 'warn' : 'muted' ) ) . '</td><td>' . esc_html( $e['message'] ) . '</td></tr>'; } // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '</tbody></table>';
 		}
 		View::card_close();

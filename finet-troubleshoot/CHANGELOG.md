@@ -20,6 +20,9 @@ Uppgradering på plats av Finet Troubleshoot 2.0.1. Samma pluginidentitet, data,
 - PHP-varningar och null-värden i inställningar (B8, B26, B29, B30).
 - Statistiksidan visade alltid 0 (B2).
 - Modalen saknade fokusfälla (B20).
+- Ogiltig CSS (`font: 600 1em/1.3 inherit`) gjorde att guideknappar, rubriker och driftkort visades i webbläsarens standardtypsnitt (B31). **Synlig ändring:** knapptexterna följer nu temats typsnitt i avsedd storlek.
+- Guidebyggarens inspektörspanel flödade ut över sidopanelen. Panelen anpassar sig nu till bredden och nodtyperna visas på svenska.
+- Demo-illustrationens text låg över kabeln.
 
 **Nytt**
 
@@ -28,6 +31,8 @@ Uppgradering på plats av Finet Troubleshoot 2.0.1. Samma pluginidentitet, data,
 - Internt samtyckesgränssnitt som fungerar med WP Consent API utan att kräva WPConsent.
 - Krypterad lagring av hemligheter, härdad HTTP-klient med kretsbrytare och rate limiting.
 - Block för adressökning och Instagram, progressbar, bildplacering vänster/höger och CTA-redigering i byggaren.
+- Ny översiktssida med status för alla moduler.
+- Testdata för manuell test (Diagnos eller `wp wpfinet testdata create|remove`). Inte tillgängligt i miljötypen production.
 
 ## 2.0.1
 

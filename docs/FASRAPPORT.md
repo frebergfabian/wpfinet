@@ -18,12 +18,13 @@ Gren: `wpfinet-3` (bas: `main` = oförändrad 2.0.1). Varje fas är en egen comm
 | Svit | Kommando | Resultat |
 |---|---|---|
 | PHP-lint | `bin/php-lint.sh` | OK |
-| PHPUnit (kontrakt, enhet, integration) | `bin/test.sh` | 85 tester, 621 påståenden, gröna |
+| PHPUnit (kontrakt, enhet, integration) | `bin/test.sh` | 86 tester, 633 påståenden, gröna |
 | JS-enhetstester | `npm run test:js` | 4/4 |
 | HTTP-röktest och TTFB | `tests/e2e/http-smoke.sh` | 10/10 |
 | Webbläsare (guider, adressökning, admin, block) | `tests/e2e/run-browser.sh` | 23/23 |
 | Samtycke live och skanner | `tests/e2e/run-consent.sh` | 21/21, skanner rapporterar |
 | Uppgradering 2.0.1 → 3.0 → rollback | `tests/upgrade/run-upgrade-test.sh <zip>` | 26/26 |
+| UI-granskning (alla admin- och frontendvyer, 1280 och 390 px: JS-fel, PHP-varningar, horisontell scroll) | `tests/e2e/run-ui-review.sh` | 69/69 |
 | Döda externa tjänster | `tests/e2e/perf-dead-externals.sh` | 6/6 (TTFB < 0,12 s, 0 anrop) |
 
 ## Acceptanskriterier (masterprompt §6)
@@ -40,6 +41,10 @@ Gren: `wpfinet-3` (bas: `main` = oförändrad 2.0.1). Varje fas är en egen comm
 | Ingen dubbel banner vid slutligt byte | ✔ Spärr i admin (live kräver bekräftelse att WPConsent stängs av) |
 | ZIP med kompilerade assets, lint och tester gröna | ✔ PHP 8.3. WPCS-säkerhetssniffar gröna (falsklarm dokumenterade). IIS/PHP 8.5 återstår. |
 | Migreringsrapport med antal, shortcodes, oersatta referenser och fel. Inget destruktivt vid fel. | ✔ Diagnos → Migreringsrapport och `wp wpfinet inventory` |
+
+## Manuell test
+
+Se [TESTPLAN.md](TESTPLAN.md). Testdata för moduler utan API-uppgifter: *WPFinet → Diagnos → Skapa testdata* (inte i miljötypen production).
 
 ## Behöver ditt beslut eller underlag
 1. **Access API:** endpoint-sökväg, autentisering, headers, query-parametrar och ett exempelsvar (från WPGetAPI-konfigurationen i staging).

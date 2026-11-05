@@ -4,6 +4,7 @@ WordPress-plugin för Finet: felsökningsguider, driftstörningar, samtyckesstyr
 
 | Dokument | Innehåll |
 |---|---|
+| [docs/TESTPLAN.md](docs/TESTPLAN.md) | Manuell testplan steg för steg |
 | [docs/FASRAPPORT.md](docs/FASRAPPORT.md) | Status per fas, testresultat, acceptanskriterier och vad som behöver beslut |
 | [docs/fas-a/INVENTERING.md](docs/fas-a/INVENTERING.md) | Inventering av 2.0.1, kontrakt, avvikelser mot registret, 30 buggar och okända uppgifter |
 | [docs/MIGRERING-OCH-ROLLBACK.md](docs/MIGRERING-OCH-ROLLBACK.md) | Steg för staging och produktion, modul för modul, samt rollback |

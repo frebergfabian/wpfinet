@@ -114,6 +114,7 @@ final class AccessAdmin {
 		$s       = AccessSettings::get();
 		$service = new AccessService( $s );
 		$health  = $service->health();
+		$real_missing = AccessSettings::missing( array_merge( $s, array( 'adapter' => 'http' ) ) ); // What a REAL integration still needs, also while test data is used.
 		$notice  = isset( $_GET['wpfinet_access'] ) ? sanitize_key( wp_unslash( $_GET['wpfinet_access'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		View::open( __( 'Adressökning – Finet Access API', 'finet-troubleshoot' ), __( 'Besökare söker en adress i taget. Servern svarar bara med status för den adressen – aldrig med listor. Sidvisningar gör aldrig anrop mot API:t.', 'finet-troubleshoot' ) );
 		$messages = array( 'saved' => __( 'Inställningarna är sparade.', 'finet-troubleshoot' ), 'secret_saved' => __( 'Hemligheten är sparad krypterat.', 'finet-troubleshoot' ), 'tested' => __( 'Anslutningstestet är klart – se resultatet nedan.', 'finet-troubleshoot' ), 'synced' => __( 'Synken lyckades.', 'finet-troubleshoot' ), 'sync_failed' => __( 'Synken misslyckades – se senaste resultat.', 'finet-troubleshoot' ), 'sync_queued' => __( 'Synken har köats och körs i bakgrunden.', 'finet-troubleshoot' ), 'looked_up' => __( 'Testsökningen är klar.', 'finet-troubleshoot' ), 'breaker_reset' => __( 'Kretsbrytaren är återställd.', 'finet-troubleshoot' ) );
@@ -124,7 +125,7 @@ final class AccessAdmin {
 
 		echo '<div class="wpf-grid">';
 		View::card_open( __( 'Status', 'finet-troubleshoot' ) );
-		echo '<div class="wpf-status">' . View::badge( Modules::enabled( 'access' ) ? __( 'Modul på', 'finet-troubleshoot' ) : __( 'Modul av', 'finet-troubleshoot' ), Modules::enabled( 'access' ) ? 'ok' : 'muted' ) . View::badge( 'mock' === $s['adapter'] ? __( 'Testdata', 'finet-troubleshoot' ) : __( 'Riktigt API', 'finet-troubleshoot' ), 'mock' === $s['adapter'] ? 'warn' : 'muted' ) . View::badge( $health['configured'] ? __( 'Konfigurerad', 'finet-troubleshoot' ) : __( 'Ej komplett', 'finet-troubleshoot' ), $health['configured'] ? 'ok' : 'warn' ) . View::badge( $health['circuit_open'] ? __( 'Kretsbrytare öppen', 'finet-troubleshoot' ) : __( 'Kretsbrytare stängd', 'finet-troubleshoot' ), $health['circuit_open'] ? 'error' : 'ok' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div class="wpf-status">' . View::badge( Modules::enabled( 'access' ) ? __( 'Modul på', 'finet-troubleshoot' ) : __( 'Modul av', 'finet-troubleshoot' ), Modules::enabled( 'access' ) ? 'ok' : 'muted' ) . View::badge( 'mock' === $s['adapter'] ? __( 'Testdata', 'finet-troubleshoot' ) : __( 'Riktigt API', 'finet-troubleshoot' ), 'mock' === $s['adapter'] ? 'warn' : 'muted' ) . View::badge( $real_missing ? __( 'Riktig integration ej komplett', 'finet-troubleshoot' ) : __( 'Konfigurerad', 'finet-troubleshoot' ), $real_missing ? 'warn' : 'ok' ) . View::badge( $health['circuit_open'] ? __( 'Kretsbrytare öppen', 'finet-troubleshoot' ) : __( 'Kretsbrytare stängd', 'finet-troubleshoot' ), $health['circuit_open'] ? 'error' : 'ok' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$fresh = array( 'empty' => __( 'tomt', 'finet-troubleshoot' ), 'fresh' => __( 'aktuellt', 'finet-troubleshoot' ), 'stale' => __( 'inaktuellt (visas med varning)', 'finet-troubleshoot' ), 'expired' => __( 'för gammalt (besökare får "tillfälligt otillgänglig")', 'finet-troubleshoot' ) );
 		echo '<dl class="wpf-dl"><dt>' . esc_html__( 'Läge', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( 'index' === $s['mode'] ? __( 'Lokalt index (schemalagd synk)', 'finet-troubleshoot' ) : __( 'Uppslag per sökning', 'finet-troubleshoot' ) ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Endpoint', 'finet-troubleshoot' ) . '</dt><dd><code>' . esc_html( $health['endpoint'] ?: $s['base_url'] . '…' ) . '</code></dd>';
@@ -142,9 +143,12 @@ final class AccessAdmin {
 		View::card_close();
 
 		View::card_open( __( 'Vad saknas för riktig integration', 'finet-troubleshoot' ) );
-		if ( $health['missing'] ) {
+		if ( 'mock' === $s['adapter'] ) {
+			View::notice( 'warning', __( 'Testdata används. Besökare får svar från påhittade adresser. Byt datakälla till Finet Access API före publicering.', 'finet-troubleshoot' ) );
+		}
+		if ( $real_missing ) {
 			echo '<div class="wpf-missing"><strong>' . esc_html__( 'Följande uppgifter är okända och har inte hittats på:', 'finet-troubleshoot' ) . '</strong><ul>';
-			foreach ( $health['missing'] as $m ) { echo '<li>' . esc_html( $m ) . '</li>'; }
+			foreach ( $real_missing as $m ) { echo '<li>' . esc_html( $m ) . '</li>'; }
 			echo '</ul></div>';
 		} else {
 			echo '<p>' . esc_html__( 'Alla obligatoriska uppgifter är ifyllda. Verifiera med "Testa anslutning".', 'finet-troubleshoot' ) . '</p>';

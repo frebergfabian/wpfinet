@@ -35,9 +35,14 @@ final class Diagnostics {
 			'Permalänkar'      => (string) get_option( 'permalink_structure' ) ?: 'enkla (?p=)',
 			'WP-Cron'          => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'DISABLE_WP_CRON – kräver extern schemaläggare (Windows Task Scheduler)' : 'aktiv (startas av besök)',
 			'Schemalagda jobb' => implode( '; ', $cron ),
-			'Moduler'          => wp_json_encode( Modules::all() ),
+			'Moduler'          => self::modules_text(),
 			'Samtycke'         => 'källa: ' . ConsentService::instance()->provider(),
 		);
+	}
+
+	public static function modules_text(): string {
+		$m = Modules::all();
+		return sprintf( 'Adressökning: %s · Instagram: %s · Samtycke: %s · Strikta behörigheter: %s', $m['access'] ? 'på' : 'av', $m['instagram'] ? 'på' : 'av', array( 'off' => 'av', 'preview' => 'testläge', 'live' => 'live' )[ $m['consent'] ], $m['strict_capabilities'] ? 'på' : 'av' );
 	}
 
 	/** @return array<int,array{name:string,ok:bool,note:string}> */
