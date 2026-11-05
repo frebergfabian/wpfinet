@@ -21,6 +21,8 @@ final class EventController {
 	public function store( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		$consent = new ConsentManager();
 		if ( ! $consent->has_analytics_consent() ) { return rest_ensure_response( array( 'accepted' => false, 'reason' => 'consent_required' ) ); }
+		// 3.0 (B17): additional per-client limit; the 2.0 per-session limit relies on a client-chosen ID.
+		if ( ! \FinetTroubleshoot\Core\RateLimiter::hit( 'events', \FinetTroubleshoot\Core\ClientIp::resolve(), (int) apply_filters( 'wpfinet_events_rate_limit', 60 ), MINUTE_IN_SECONDS ) ) { return new \WP_REST_Response( array( 'accepted' => false, 'reason' => 'rate_limited' ), 429 ); }
 		$payload = $request->get_json_params(); if ( ! is_array( $payload ) ) { return new \WP_Error( 'wpfinet_invalid_event', __( 'Ogiltig statistikdata.', 'finet-troubleshoot' ), array( 'status' => 400 ) ); }
 		$events = isset( $payload['events'] ) && is_array( $payload['events'] ) ? array_slice( $payload['events'], 0, 25 ) : array( $payload );
 		$stored = 0;
@@ -32,7 +34,7 @@ final class EventController {
 		$session = sanitize_text_field( (string) ( $event['session'] ?? '' ) ); $type = sanitize_key( (string) ( $event['event'] ?? '' ) );
 		if ( ! preg_match( '/^[a-f0-9-]{36}$/i', $session ) || ! in_array( $type, self::EVENTS, true ) ) { return false; }
 		$limit_key = 'wpfinet_event_rate_' . md5( $session ); $count = (int) get_transient( $limit_key ); if ( $count >= 120 ) { return false; } set_transient( $limit_key, $count + 1, MINUTE_IN_SECONDS );
-		$guide_id = absint( $event['guide_id'] ?? 0 ); $device = in_array( $event['device_class'] ?? 'unknown', array( 'desktop', 'tablet', 'mobile', 'unknown' ), true ) ? $event['device_class'] : 'unknown';
+		$guide_id = absint( $event['guide_id'] ?? 0 ); $device = \FinetTroubleshoot\Import\SchemaValidator::pick( $event['device_class'] ?? null, array( 'desktop', 'tablet', 'mobile', 'unknown' ), 'unknown' ); /* 2.0.1 read an undefined key when device_class was missing. */
 		$path = wp_parse_url( esc_url_raw( (string) ( $event['page_path'] ?? '' ) ), PHP_URL_PATH ); $path = is_string( $path ) ? substr( $path, 0, 255 ) : '';
 		$db = new Database(); $now = current_time( 'mysql', true );
 		$session_table = $db->sessions_table(); $event_table = $db->events_table();

@@ -23,3 +23,15 @@ Miljö: WordPress 7.1.4, SQLite (sqlite-database-integration), PHP 8.3.6 CLI, `p
 TTFB-median (7 anrop, lokal server, varm): startsida 0,077 s, sida med två guider 0,091 s, driftarkiv 0,082 s.
 
 PHP-varningar i `debug.log` vid demoimport (B8/B26).
+
+## Webbläsartest (`tests/e2e/run-browser.sh`, Chromium via Playwright)
+
+| Kontroll | 2.0.1 | 3.0 |
+|---|---|---|
+| Två guideinstanser, förgrening, fokus till rubrik, oberoende historik, tillbaka | ✔ | ✔ |
+| Omstart med bekräftelse | ✔ | ✔ |
+| Fokus stannar i dialogen (Tab) | ✘ (ingen fokusfälla) | ✔ |
+| Ingen statistik-session eller cookie utan samtycke | ✔ | ✔ |
+| **Guidebyggaren visar befintliga noder** | **✘ 0 noder (B28)** | ✔ 10 noder |
+| **Guidebyggaren sparar** | **✘ "Spara inlägget först…" (B28/B27)** | ✔ HTTP 200 |
+| Statistiksidan | visar 0 för startade/slutförda oavsett data (B2) | ✔ rätt nycklar |

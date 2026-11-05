@@ -106,7 +106,7 @@ final class SchemaValidator {
 			'status'      => in_array( $status, array( 'publish', 'draft', 'private' ), true ) ? $status : 'draft',
 			'start_node'  => sanitize_title( (string) ( $guide['start_node'] ?? '' ) ),
 			'settings'    => $this->sanitize_settings( is_array( $guide['settings'] ?? null ) ? $guide['settings'] : array() ),
-			'variables'   => is_array( $guide['variables'] ?? null ) ? $guide['variables'] : array(),
+			'variables'   => is_array( $guide['variables'] ?? null ) ? self::sanitize_variables( $guide['variables'] ) : array(),
 			'nodes'       => $nodes,
 		);
 	}
@@ -121,7 +121,7 @@ final class SchemaValidator {
 				'id'    => sanitize_title( (string) ( $option['id'] ?? '' ) ),
 				'label' => sanitize_text_field( (string) ( $option['label'] ?? '' ) ),
 				'next'  => sanitize_title( (string) ( $option['next'] ?? '' ) ),
-				'style' => in_array( $option['style'] ?? 'primary', array( 'primary', 'secondary', 'success', 'warning', 'danger' ), true ) ? $option['style'] : 'primary',
+				'style' => self::pick( $option['style'] ?? null, array( 'primary', 'secondary', 'success', 'warning', 'danger' ), 'primary' ),
 				'icon'  => sanitize_html_class( (string) ( $option['icon'] ?? '' ) ),
 			);
 		}
@@ -138,7 +138,7 @@ final class SchemaValidator {
 			if ( ! is_array( $cta ) ) { continue; }
 			$type = sanitize_key( (string) ( $cta['type'] ?? '' ) );
 			if ( ! in_array( $type, array( 'phone', 'email', 'wpforms', 'url', 'support', 'restart', 'back', 'internal' ), true ) ) { continue; }
-			$ctas[] = array( 'id' => sanitize_title( (string) ( $cta['id'] ?? wp_generate_uuid4() ) ), 'type' => $type, 'label' => sanitize_text_field( (string) ( $cta['label'] ?? '' ) ), 'value' => in_array( $type, array( 'url', 'internal' ), true ) ? esc_url_raw( (string) ( $cta['value'] ?? '' ) ) : sanitize_text_field( (string) ( $cta['value'] ?? '' ) ), 'form_id' => absint( $cta['form_id'] ?? 0 ), 'form_title' => sanitize_text_field( (string) ( $cta['form_title'] ?? '' ) ) );
+			$ctas[] = array( 'id' => sanitize_title( (string) ( $cta['id'] ?? wp_generate_uuid4() ) ), 'type' => $type, 'label' => sanitize_text_field( (string) ( $cta['label'] ?? '' ) ), 'value' => in_array( $type, array( 'url', 'internal', 'support' ), true ) ? self::safe_url( (string) ( $cta['value'] ?? '' ) ) : sanitize_text_field( (string) ( $cta['value'] ?? '' ) ), /* 3.0 (B5): 'support' is rendered as href, so it is URL-sanitised. */ 'form_id' => absint( $cta['form_id'] ?? 0 ), 'form_title' => sanitize_text_field( (string) ( $cta['form_title'] ?? '' ) ) );
 		}
 		return array(
 			'id'            => sanitize_title( (string) ( $node['id'] ?? '' ) ),
@@ -147,7 +147,7 @@ final class SchemaValidator {
 			'heading'       => sanitize_text_field( (string) ( $node['heading'] ?? '' ) ),
 			'intro'         => sanitize_textarea_field( (string) ( $node['intro'] ?? '' ) ),
 			'content'       => wp_kses( (string) ( $node['content'] ?? '' ), $this->allowed_html() ),
-			'image'         => $image_url ? array( 'url' => $image_url, 'alt' => sanitize_text_field( (string) ( $image['alt'] ?? '' ) ), 'caption' => sanitize_text_field( (string) ( $image['caption'] ?? '' ) ), 'placement' => in_array( $image['placement'] ?? 'above_heading', array( 'above_heading', 'below_heading', 'below_text', 'left', 'right' ), true ) ? $image['placement'] : 'above_heading', 'zoom' => ! empty( $image['zoom'] ) ) : null,
+			'image'         => $image_url ? array( 'url' => $image_url, 'alt' => sanitize_text_field( (string) ( $image['alt'] ?? '' ) ), 'caption' => sanitize_text_field( (string) ( $image['caption'] ?? '' ) ), 'placement' => self::pick( $image['placement'] ?? null, array( 'above_heading', 'below_heading', 'below_text', 'left', 'right' ), 'above_heading' ), 'zoom' => ! empty( $image['zoom'] ) ) : null,
 			'icon'          => sanitize_html_class( (string) ( $node['icon'] ?? '' ) ),
 			'button_text'   => sanitize_text_field( (string) ( $node['button_text'] ?? __( 'Fortsätt', 'finet-troubleshoot' ) ) ),
 			'next'          => sanitize_title( (string) ( $node['next'] ?? '' ) ),
@@ -159,13 +159,13 @@ final class SchemaValidator {
 				'inherit_global' => ! isset( $support['inherit_global'] ) || (bool) $support['inherit_global'],
 				'phone'          => sanitize_text_field( (string) ( $support['phone'] ?? '' ) ),
 				'email'          => sanitize_email( (string) ( $support['email'] ?? '' ) ),
-				'url'            => esc_url_raw( (string) ( $support['url'] ?? '' ) ),
+				'url'            => self::safe_url( (string) ( $support['url'] ?? '' ) ),
 				'opening_hours'  => sanitize_text_field( (string) ( $support['opening_hours'] ?? '' ) ),
 			),
 			'editor_position' => array( 'x' => max( -10000, min( 10000, (float) ( $position['x'] ?? 0 ) ) ), 'y' => max( -10000, min( 10000, (float) ( $position['y'] ?? 0 ) ) ) ),
 			'ctas'          => $ctas,
 			'wpforms'       => array( 'form_id' => absint( $wpforms['form_id'] ?? 0 ), 'form_title' => sanitize_text_field( (string) ( $wpforms['form_title'] ?? '' ) ), 'embedded' => ! empty( $wpforms['embedded'] ) ),
-			'outage'        => array( 'service' => sanitize_title( (string) ( $outage['service'] ?? '' ) ), 'provider' => sanitize_title( (string) ( $outage['provider'] ?? '' ) ), 'area' => sanitize_title( (string) ( $outage['area'] ?? '' ) ), 'match_node' => sanitize_title( (string) ( $outage['match_node'] ?? '' ) ), 'no_match_node' => sanitize_title( (string) ( $outage['no_match_node'] ?? '' ) ), 'mode' => in_array( $outage['mode'] ?? 'show', array( 'show', 'continue', 'branch' ), true ) ? $outage['mode'] : 'show' ),
+			'outage'        => array( 'service' => sanitize_title( (string) ( $outage['service'] ?? '' ) ), 'provider' => sanitize_title( (string) ( $outage['provider'] ?? '' ) ), 'area' => sanitize_title( (string) ( $outage['area'] ?? '' ) ), 'match_node' => sanitize_title( (string) ( $outage['match_node'] ?? '' ) ), 'no_match_node' => sanitize_title( (string) ( $outage['no_match_node'] ?? '' ) ), 'mode' => self::pick( $outage['mode'] ?? null, array( 'show', 'continue', 'branch' ), 'show' ) ),
 			'meta'          => is_array( $node['meta'] ?? null ) ? $node['meta'] : array(),
 		);
 	}
@@ -173,27 +173,60 @@ final class SchemaValidator {
 	/** @return array<string,mixed> */
 	public function sanitize_settings( array $settings ): array {
 		$appearance = is_array( $settings['appearance'] ?? null ) ? $settings['appearance'] : array();
+		$general    = is_array( $settings['general'] ?? null ) ? $settings['general'] : array();
 		return array(
 			'use_global_design' => ! isset( $settings['use_global_design'] ) || (bool) $settings['use_global_design'],
 			'general' => array(
-				'show_title'    => ! isset( $settings['general']['show_title'] ) || (bool) $settings['general']['show_title'],
-				'show_back'     => ! isset( $settings['general']['show_back'] ) || (bool) $settings['general']['show_back'],
-				'show_restart'  => ! isset( $settings['general']['show_restart'] ) || (bool) $settings['general']['show_restart'],
-				'progress_mode' => in_array( $settings['general']['progress_mode'] ?? 'step', array( 'none', 'step', 'bar' ), true ) ? $settings['general']['progress_mode'] : 'step',
-				'animation'     => in_array( $settings['general']['animation'] ?? 'fade', array( 'fade', 'slide', 'none' ), true ) ? $settings['general']['animation'] : 'fade',
+				'show_title'    => ! isset( $general['show_title'] ) || (bool) $general['show_title'],
+				'show_back'     => ! isset( $general['show_back'] ) || (bool) $general['show_back'],
+				'show_restart'  => ! isset( $general['show_restart'] ) || (bool) $general['show_restart'],
+				'progress_mode' => self::pick( $general['progress_mode'] ?? null, array( 'none', 'step', 'bar' ), 'step' ),
+				'animation'     => self::pick( $general['animation'] ?? null, array( 'fade', 'slide', 'none' ), 'fade' ),
 			),
 			'appearance' => array(
-				'preset'         => in_array( $appearance['preset'] ?? 'inherit', array( 'inherit', 'wpfinet', 'custom' ), true ) ? $appearance['preset'] : 'inherit',
+				'preset'         => self::pick( $appearance['preset'] ?? null, array( 'inherit', 'wpfinet', 'custom' ), 'inherit' ),
 				'primary_color'  => sanitize_hex_color( (string) ( $appearance['primary_color'] ?? '' ) ) ?: '',
-				'background'     => sanitize_text_field( (string) ( $appearance['background'] ?? '' ) ),
-				'card_background'=> sanitize_text_field( (string) ( $appearance['card_background'] ?? '' ) ),
+				'background'     => self::css_color( (string) ( $appearance['background'] ?? '' ) ),
+				'card_background'=> self::css_color( (string) ( $appearance['card_background'] ?? '' ) ),
 				'border_color'   => sanitize_hex_color( (string) ( $appearance['border_color'] ?? '' ) ) ?: '',
 				'radius'         => min( 48, max( 0, absint( $appearance['radius'] ?? 8 ) ) ),
 				'spacing'        => min( 64, max( 8, absint( $appearance['spacing'] ?? 24 ) ) ),
 				'max_width'      => min( 1440, max( 280, absint( $appearance['max_width'] ?? 760 ) ) ),
 			),
-			'support' => is_array( $settings['support'] ?? null ) ? $settings['support'] : array(),
+			'support' => is_array( $settings['support'] ?? null ) ? array_map( static fn ( $v ) => is_scalar( $v ) ? sanitize_text_field( (string) $v ) : '', array_intersect_key( $settings['support'], array_flip( array( 'company', 'phone', 'email', 'url', 'outage_url', 'opening_hours', 'text' ) ) ) ) : array(),
 		);
+	}
+
+	/** Returns $value when it is one of $allowed, otherwise $default (2.0.1 returned null for missing keys, B26). */
+	public static function pick( mixed $value, array $allowed, string $default ): string {
+		return is_string( $value ) && in_array( $value, $allowed, true ) ? $value : $default;
+	}
+
+	/** URL usable as href: http(s), mailto, tel or site-relative. Everything else (javascript:, data: …) becomes ''. */
+	public static function safe_url( string $value ): string {
+		$value = trim( $value );
+		if ( '' === $value ) { return ''; }
+		if ( preg_match( '#^(/|\#|\?)#', $value ) ) { return esc_url_raw( $value ); }
+		if ( preg_match( '#^([a-z][a-z0-9+.-]*):#i', $value, $m ) && ! in_array( strtolower( $m[1] ), array( 'http', 'https', 'mailto', 'tel' ), true ) ) { return ''; }
+		return esc_url_raw( $value, array( 'http', 'https', 'mailto', 'tel' ) );
+	}
+
+	/** Accepts colour-like CSS values only (hex, rgb/hsl, named, transparent). Anything else (url(), expressions) → ''. */
+	public static function css_color( string $value ): string {
+		$value = trim( $value );
+		return preg_match( '/^(#[0-9a-f]{3,8}|(rgb|rgba|hsl|hsla)\([0-9.,%\s\/]+\)|[a-z]{3,20})$/i', $value ) ? $value : '';
+	}
+
+	/** @param array<mixed> $variables @return array<string,mixed> */
+	public static function sanitize_variables( array $variables, int $depth = 0 ): array {
+		$clean = array();
+		foreach ( array_slice( $variables, 0, 100, true ) as $key => $value ) {
+			$key = is_int( $key ) ? $key : sanitize_key( (string) $key );
+			if ( is_array( $value ) ) { $clean[ $key ] = $depth < 3 ? self::sanitize_variables( $value, $depth + 1 ) : array(); }
+			elseif ( is_bool( $value ) || is_int( $value ) || is_float( $value ) || null === $value ) { $clean[ $key ] = $value; }
+			else { $clean[ $key ] = sanitize_text_field( (string) $value ); }
+		}
+		return $clean;
 	}
 
 	/** @return array<string,array<int|string,mixed>> */

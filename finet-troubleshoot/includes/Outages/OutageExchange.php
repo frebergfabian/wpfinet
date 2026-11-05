@@ -19,6 +19,23 @@ final class OutageExchange {
 	public function export_one( \WP_Post $post ): array {
 		return array( 'external_id' => (string) get_post_meta( $post->ID, '_wpfinet_external_id', true ) ?: 'outage-' . $post->ID, 'title' => $post->post_title, 'slug' => $post->post_name, 'status' => $post->post_status, 'published_at' => get_date_from_gmt( $post->post_date_gmt, 'c' ), 'summary' => $post->post_excerpt, 'content' => $post->post_content, 'incident_type' => get_post_meta( $post->ID, OutageModule::META_TYPE, true ), 'outage_status' => get_post_meta( $post->ID, OutageModule::META_STATUS, true ), 'priority' => get_post_meta( $post->ID, OutageModule::META_PRIORITY, true ), 'incident_start' => get_post_meta( $post->ID, OutageModule::META_START, true ), 'estimated_end' => get_post_meta( $post->ID, OutageModule::META_ESTIMATED_END, true ), 'actual_end' => get_post_meta( $post->ID, OutageModule::META_ACTUAL_END, true ), 'show_banner' => '1' === get_post_meta( $post->ID, OutageModule::META_BANNER, true ), 'providers' => wp_get_post_terms( $post->ID, OutageModule::TAX_PROVIDER, array( 'fields' => 'names' ) ), 'services' => wp_get_post_terms( $post->ID, OutageModule::TAX_SERVICE, array( 'fields' => 'names' ) ), 'areas' => wp_get_post_terms( $post->ID, OutageModule::TAX_AREA, array( 'fields' => 'names' ) ), 'area_note' => get_post_meta( $post->ID, OutageModule::META_AREA_NOTE, true ), 'timeline' => get_post_meta( $post->ID, OutageModule::META_TIMELINE, true ) ?: array() );
 	}
+	/** @return array<int,array{time:string,text:string,status:string,author:int,public:bool}> */
+	public static function sanitize_timeline( mixed $timeline ): array {
+		$statuses = array( 'scheduled', 'investigating', 'identified', 'in_progress', 'monitoring', 'resolved', 'cancelled' );
+		$clean    = array();
+		foreach ( array_slice( is_array( $timeline ) ? $timeline : array(), 0, 500 ) as $item ) {
+			if ( ! is_array( $item ) ) { continue; }
+			$time = sanitize_text_field( (string) ( $item['time'] ?? '' ) );
+			$clean[] = array(
+				'time'   => preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $time ) ? $time : '',
+				'text'   => sanitize_textarea_field( (string) ( $item['text'] ?? '' ) ),
+				'status' => in_array( $item['status'] ?? '', $statuses, true ) ? (string) $item['status'] : '',
+				'author' => absint( $item['author'] ?? 0 ),
+				'public' => ! empty( $item['public'] ),
+			);
+		}
+		return $clean;
+	}
 	/** @return array{imported:int,failed:int,items:array<int,array<string,mixed>>} */
 	public function import( array $outages ): array {
 		$result = array( 'imported' => 0, 'failed' => 0, 'items' => array() );
@@ -31,7 +48,7 @@ final class OutageExchange {
 			if ( is_wp_error( $id ) ) { ++$result['failed']; $result['items'][] = array( 'title' => $post_data['post_title'], 'status' => 'failed', 'message' => $id->get_error_message() ); continue; }
 			update_post_meta( $id, '_wpfinet_external_id', $external );
 			$types = array( 'incident_type' => OutageModule::META_TYPE, 'outage_status' => OutageModule::META_STATUS, 'priority' => OutageModule::META_PRIORITY, 'incident_start' => OutageModule::META_START, 'estimated_end' => OutageModule::META_ESTIMATED_END, 'actual_end' => OutageModule::META_ACTUAL_END, 'area_note' => OutageModule::META_AREA_NOTE ); foreach ( $types as $field => $meta ) { update_post_meta( $id, $meta, sanitize_text_field( (string) ( $raw[ $field ] ?? '' ) ) ); }
-			update_post_meta( $id, OutageModule::META_BANNER, ! empty( $raw['show_banner'] ) ? '1' : '0' ); update_post_meta( $id, OutageModule::META_TIMELINE, is_array( $raw['timeline'] ?? null ) ? $raw['timeline'] : array() );
+			update_post_meta( $id, OutageModule::META_BANNER, ! empty( $raw['show_banner'] ) ? '1' : '0' ); update_post_meta( $id, OutageModule::META_TIMELINE, self::sanitize_timeline( $raw['timeline'] ?? array() ) );
 			foreach ( array( 'providers' => OutageModule::TAX_PROVIDER, 'services' => OutageModule::TAX_SERVICE, 'areas' => OutageModule::TAX_AREA ) as $field => $taxonomy ) { $terms = array_map( 'sanitize_text_field', (array) ( $raw[ $field ] ?? array() ) ); if ( $terms ) { wp_set_object_terms( $id, $terms, $taxonomy, false ); } }
 			++$result['imported']; $result['items'][] = array( 'title' => $post_data['post_title'], 'status' => 'imported', 'post_id' => $id, 'message' => __( 'Driftstörning importerad.', 'finet-troubleshoot' ) );
 		}

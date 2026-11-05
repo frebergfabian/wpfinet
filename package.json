@@ -1,0 +1,14 @@
+{
+  "name": "wpfinet-dev",
+  "private": true,
+  "description": "Development tooling for WPFINET. Production needs no Node: built assets are committed.",
+  "type": "module",
+  "scripts": {
+    "build": "node bin/build-assets.mjs",
+    "test:js": "node --test tests/js/*.test.js",
+    "test:e2e": "tests/e2e/http-smoke.sh && tests/e2e/run-browser.sh"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}

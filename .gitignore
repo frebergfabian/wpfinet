@@ -6,3 +6,4 @@
 /scanner/results/
 *.log
 .phpunit.result.cache
+node_modules/

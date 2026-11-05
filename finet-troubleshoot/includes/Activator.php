@@ -23,9 +23,10 @@ final class Activator {
 		Capabilities::grant_administrators();
 		( new Database() )->install();
 		Cron::schedule();
+		$is_upgrade_or_reactivation = false !== get_option( 'finet_ts_db_version', false );
 
 		$existing_guides = get_posts( array( 'post_type' => GuidePostType::POST_TYPE, 'post_status' => array( 'publish', 'draft', 'private', 'pending', 'future' ), 'fields' => 'ids', 'posts_per_page' => 1, 'no_found_rows' => true ) );
-		if ( ! get_option( 'finet_ts_demo_installed' ) && empty( $existing_guides ) ) {
+		if ( ! $is_upgrade_or_reactivation && ! get_option( 'finet_ts_demo_installed' ) && empty( $existing_guides ) ) {
 			$path = FINET_TS_DIR . 'examples/finet-troubleshoot-example.json';
 			if ( is_readable( $path ) ) {
 				$json = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -40,8 +41,9 @@ final class Activator {
 			}
 		}
 
-		update_option( 'finet_ts_schema_version', '2.0', false );
-		update_option( 'finet_ts_db_version', '2.0.0', false );
+		add_option( 'finet_ts_schema_version', '2.0', '', false );
+		// 3.0: never overwrite the stored DB version (2.0.1 forced '2.0.0', hiding later migrations). Run migrations instead.
+		( new Core\MigrationManager() )->run();
 		flush_rewrite_rules();
 	}
 

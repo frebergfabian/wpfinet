@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<ruleset name="WPFINET">
+  <description>WordPress Coding Standards for the WPFINET plugin (run: vendor/bin/phpcs).</description>
+  <file>finet-troubleshoot/finet-troubleshoot.php</file>
+  <file>finet-troubleshoot/includes</file>
+  <file>finet-troubleshoot/uninstall.php</file>
+  <exclude-pattern>*/assets/*</exclude-pattern>
+  <rule ref="WordPress">
+    <exclude name="WordPress.Files.FileName"/>
+  </rule>
+  <config name="minimum_supported_wp_version" value="6.5"/>
+  <config name="testVersion" value="8.1-"/>
+</ruleset>

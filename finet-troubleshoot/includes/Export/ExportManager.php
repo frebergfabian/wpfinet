@@ -27,14 +27,14 @@ final class ExportManager {
 		return $this->document( array_map( fn ( \WP_Post $post ): array => $this->guide_from_post( $post ), $posts ) );
 	}
 	/** @return array<string,mixed> */
-	public function document( array $guides ): array {
+	public function document( array $guides, bool $include_outages = true ): array {
 		return array(
 			'schema'         => 'finet-troubleshoot',
 			'schema_version' => '2.0',
 			'generated_at'   => current_time( 'c' ),
 			'generator'      => 'Finet Troubleshoot ' . FINET_TS_VERSION,
 			'guides'         => $guides,
-			'outages'        => ( new OutageExchange() )->export_all(),
+			'outages'        => $include_outages ? ( new OutageExchange() )->export_all() : array(),
 		);
 	}
 	/** @return array<string,mixed> */
@@ -47,9 +47,14 @@ final class ExportManager {
 			'status'      => $post->post_status,
 			'start_node'  => (string) get_post_meta( $post->ID, GuidePostType::META_START_NODE, true ),
 			'settings'    => get_post_meta( $post->ID, GuidePostType::META_SETTINGS, true ) ?: array(),
-			'variables'   => array(),
+			'variables'   => self::variables( $post->ID ),
 			'nodes'       => get_post_meta( $post->ID, GuidePostType::META_NODES, true ) ?: array(),
 		);
+	}
+	/** Guide variables are stored since 3.0 (2.0.1 accepted them on import but dropped them). @return array<string,mixed>|array{} */
+	public static function variables( int $post_id ): array {
+		$variables = get_post_meta( $post_id, GuidePostType::META_VARIABLES, true );
+		return is_array( $variables ) ? $variables : array();
 	}
 	public function send_download( array $document, string $filename ): never {
 		nocache_headers();

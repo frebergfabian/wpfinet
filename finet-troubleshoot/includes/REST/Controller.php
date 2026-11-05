@@ -14,6 +14,7 @@ use FinetTroubleshoot\Import\ImportManager;
 use FinetTroubleshoot\Import\SchemaValidator;
 use FinetTroubleshoot\PostTypes\GuidePostType;
 use FinetTroubleshoot\Integrations\WPForms;
+use FinetTroubleshoot\Core\StrictCapabilities;
 use FinetTroubleshoot\Validation\FlowValidator;
 
 final class Controller {
@@ -24,7 +25,7 @@ final class Controller {
 		$namespace = 'finet-troubleshoot/v1';
 		register_rest_route( $namespace, '/guides', array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'guides' ), 'permission_callback' => array( $this, 'can_edit' ) ) );
 		register_rest_route( $namespace, '/guides/(?P<id>\d+)', array(
-			array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'guide' ), 'permission_callback' => array( $this, 'can_edit' ), 'args' => array( 'id' => array( 'validate_callback' => 'is_numeric' ) ) ),
+			array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'guide' ), 'permission_callback' => array( $this, 'can_edit' ), 'args' => array( 'id' => array( 'validate_callback' => static fn ( $value ): bool => is_numeric( $value ) ) ) ), // 2.0.1 passed 'is_numeric' directly, which throws ArgumentCountError on PHP 8 (WordPress passes 3 args).
 			array( 'methods' => \WP_REST_Server::EDITABLE, 'callback' => array( $this, 'save_guide' ), 'permission_callback' => array( $this, 'can_edit' ) ),
 		) );
 		register_rest_route( $namespace, '/guides/(?P<id>\d+)/duplicate', array( 'methods' => \WP_REST_Server::CREATABLE, 'callback' => array( $this, 'duplicate' ), 'permission_callback' => array( $this, 'can_edit' ) ) );
@@ -33,7 +34,7 @@ final class Controller {
 		register_rest_route( $namespace, '/import', array( 'methods' => \WP_REST_Server::CREATABLE, 'callback' => array( $this, 'import' ), 'permission_callback' => array( $this, 'can_manage' ) ) );
 		register_rest_route( $namespace, '/export/(?P<id>\d+)', array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'export' ), 'permission_callback' => array( $this, 'can_manage' ) ) );
 	}
-	public function can_edit(): bool { return current_user_can( 'manage_wpfinet_guides' ) || current_user_can( 'edit_posts' ); }
+	public function can_edit(): bool { return StrictCapabilities::can_edit_guides(); }
 	public function can_manage(): bool { return current_user_can( 'manage_wpfinet_settings' ) || current_user_can( 'manage_options' ); }
 	public function guides(): \WP_REST_Response {
 		$posts = get_posts( array( 'post_type' => GuidePostType::POST_TYPE, 'post_status' => array( 'publish', 'draft', 'private' ), 'posts_per_page' => -1, 'orderby' => 'modified', 'order' => 'DESC' ) );
@@ -91,7 +92,9 @@ final class Controller {
 	}
 	public function export( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		$guide = $this->exporter->export_guide( (int) $request['id'] ); if ( is_wp_error( $guide ) ) { return $guide; }
-		return rest_ensure_response( $this->exporter->document( array( $guide ) ) );
+		// 2.0 behaviour (kept): a single-guide export also contains all outages. ?include_outages=0 omits them.
+		$include_outages = null === $request->get_param( 'include_outages' ) || rest_sanitize_boolean( $request->get_param( 'include_outages' ) );
+		return rest_ensure_response( $this->exporter->document( array( $guide ), $include_outages ) );
 	}
 	private function get_editable_post( int $id ): \WP_Post|\WP_Error {
 		$post = get_post( $id );

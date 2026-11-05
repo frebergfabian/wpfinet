@@ -44,7 +44,9 @@ final class ImportManager {
 			}
 			if ( $existing && 'copy' === $strategy ) {
 				$guide['external_id'] = $this->unique_external_id( $guide['external_id'] );
-				$guide['slug'] = wp_unique_post_slug( $guide['slug'], 0, 'draft', GuidePostType::POST_TYPE, 0 );
+			}
+			if ( ! ( $existing && 'update' === $strategy ) ) {
+				$guide['slug'] = $this->unique_slug( $guide['slug'] );
 			}
 			$saved = $writer->save_guide( $guide, $existing && 'update' === $strategy ? 'update' : 'copy', $existing ?: null, (string) ( $document['schema_version'] ?? '1.0' ) );
 			if ( is_wp_error( $saved ) ) {
@@ -62,6 +64,12 @@ final class ImportManager {
 	private function find_by_external_id( string $external_id ): ?int {
 		$posts = get_posts( array( 'post_type' => GuidePostType::POST_TYPE, 'post_status' => array( 'publish', 'draft', 'private', 'pending', 'future' ), 'meta_key' => GuidePostType::META_EXTERNAL_ID, 'meta_value' => $external_id, 'fields' => 'ids', 'posts_per_page' => 1, 'no_found_rows' => true ) );
 		return ! empty( $posts ) ? (int) $posts[0] : null;
+	}
+	/** 2.0.1 used wp_unique_post_slug(..., 'draft') which never de-duplicates drafts. */
+	private function unique_slug( string $slug ): string {
+		$base = $slug; $number = 2;
+		while ( get_posts( array( 'post_type' => GuidePostType::POST_TYPE, 'name' => $slug, 'post_status' => 'any', 'fields' => 'ids', 'posts_per_page' => 1, 'no_found_rows' => true ) ) ) { $slug = $base . '-' . $number++; }
+		return $slug;
 	}
 	private function unique_external_id( string $external_id ): string {
 		$base = $external_id; $number = 2;
