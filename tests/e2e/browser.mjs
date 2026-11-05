@@ -36,6 +36,32 @@ try {
 	check('no cookies set by WPFINET for visitor', (await ctx.cookies()).every((c) => !/wpfinet|finet/i.test(c.name)));
 	check('no JS errors on front end', errors.length === 0, errors.join('; '));
 
+	// Address check (mock data).
+	await page.goto(`${B}/adresskoll/`);
+	const input = page.getByLabel('Din adress');
+	await input.fill('exempelgatan 3a');
+	await input.press('Enter');
+	const result = page.locator('.wpfinet-access__result');
+	await result.locator('.wpfinet-access__cta').waitFor({ timeout: 5000 });
+	check('address check: connected via Enter', (await result.getAttribute('class')).includes('is-connected'));
+	check('address check: CTA /tjanster', (await result.locator('a').getAttribute('href')) === '/tjanster');
+	await input.fill('Exempelgatan 2'); await page.getByRole('button', { name: 'Sök' }).click();
+	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-not_connected'));
+	check('address check: not connected → /kontakta-oss', (await result.locator('a').getAttribute('href')) === '/kontakta-oss');
+	await input.fill('Storgatan'); await input.press('Enter');
+	check('address check: invalid format handled client-side', (await result.getAttribute('class')).includes('is-invalid') && (await input.getAttribute('aria-invalid')) === 'true');
+	const responses = [];
+	page.on('response', async (r) => { if (r.url().includes('/access/check')) { responses.push(await r.text()); } });
+	await input.fill('Exempelgatan 1'); await input.press('Enter');
+	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-connected'));
+	check('address check: response contains one status only', responses.length === 1 && !responses[0].includes('Exempelgatan') && responses[0].length < 400, responses[0]);
+	check('address check: no inline script in page content', (await page.locator('.wpfinet-access script').count()) === 0);
+	await page.route('**/access/check', (route) => route.abort());
+	await input.fill('Exempelgatan 1'); await input.press('Enter');
+	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-unavailable'));
+	check('address check: network failure shows "tillfälligt otillgänglig"', /tillfälligt otillgänglig/.test(await result.innerText()));
+	await page.unroute('**/access/check');
+
 	// Admin: login, builder save, statistics.
 	const admin = await browser.newContext();
 	const a = await admin.newPage();

@@ -52,11 +52,13 @@ final class View {
 	/** @param array<string,mixed> $attrs */
 	public static function input( string $name, string $label, string $value, string $help = '', array $attrs = array() ): void {
 		$id    = 'wpf-' . sanitize_html_class( str_replace( array( '[', ']' ), '-', $name ) );
+		$class = (string) ( $attrs['class'] ?? 'regular-text' );
+		unset( $attrs['class'] );
 		$extra = '';
 		foreach ( $attrs as $k => $v ) {
 			$extra .= ' ' . esc_attr( (string) $k ) . '="' . esc_attr( (string) $v ) . '"';
 		}
-		echo '<div class="wpf-field"><label class="wpf-field__label" for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label><input class="regular-text" id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . $extra . '>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div class="wpf-field"><label class="wpf-field__label" for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label><input class="' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . $extra . ( $help ? ' aria-describedby="' . esc_attr( $id ) . '-help"' : '' ) . '>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( $help ) {
 			echo '<p class="wpf-field__help" id="' . esc_attr( $id ) . '-help">' . esc_html( $help ) . '</p>';
 		}

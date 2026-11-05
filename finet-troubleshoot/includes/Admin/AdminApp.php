@@ -30,9 +30,11 @@ final class AdminApp {
 		add_action( 'admin_post_wpfinet_download_diagnostics', array( $this, 'download_diagnostics' ) );
 		add_action( 'admin_post_wpfinet_grant_editors', array( $this, 'grant_editors' ) );
 		add_action( 'admin_notices', array( $this, 'notices' ) );
+		\FinetTroubleshoot\Access\AccessAdmin::register_hooks();
 	}
 
 	public function menu(): void {
+		\FinetTroubleshoot\Access\AccessAdmin::register_legacy_page();
 		$pages = array(
 			'wpfinet-access'       => array( __( 'Adressökning', 'finet-troubleshoot' ), 'manage_wpfinet_settings', array( \FinetTroubleshoot\Access\AccessAdmin::class, 'render' ) ),
 			'wpfinet-instagram'    => array( __( 'Instagram', 'finet-troubleshoot' ), 'manage_wpfinet_settings', array( \FinetTroubleshoot\Instagram\InstagramAdmin::class, 'render' ) ),
@@ -155,6 +157,8 @@ final class AdminApp {
 		}
 		// phpcs:enable
 		Modules::update( $values );
+		if ( empty( $values['access'] ) ) { wp_clear_scheduled_hook( 'wpfinet_access_sync' ); }
+		if ( empty( $values['instagram'] ) ) { wp_clear_scheduled_hook( 'wpfinet_instagram_sync' ); wp_clear_scheduled_hook( 'wpfinet_instagram_refresh_token' ); }
 		Logger::log( 'admin', 'info', 'Moduler sparade: ' . wp_json_encode( Modules::all() ), array( 'user' => get_current_user_id() ) );
 		flush_rewrite_rules( false );
 		self::back( 'wpfinet-integrations', 'modules_saved' );

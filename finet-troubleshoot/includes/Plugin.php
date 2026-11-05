@@ -74,6 +74,7 @@ final class Plugin {
 
 		// 3.0 modules.
 		( new AdminApp() )->register_hooks();
+		( new Frontend\ModuleShortcodes() )->register_hooks();
 		if ( Modules::enabled( 'access' ) && class_exists( Access\AccessModule::class ) ) {
 			( new Access\AccessModule() )->register_hooks();
 		}

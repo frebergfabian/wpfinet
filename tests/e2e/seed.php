@@ -11,5 +11,10 @@ wp_set_object_terms( $outage, array( 'Internet' ), 'wpfinet_service' );
 $page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Felsökning', 'post_name' => 'felsokning', 'post_content' => '[finet_troubleshoot id="' . $guide . '"][finet_troubleshoot slug="e2e-guide" show_title="false"][wpfinet_outage_status][wpfinet_outages status="current" service="internet"]' ) );
 $home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Start', 'post_name' => 'start', 'post_content' => '<p>Välkommen</p>' ) );
 update_option( 'show_on_front', 'page' ); update_option( 'page_on_front', $home );
+// Address check with fictitious test data.
+FinetTroubleshoot\Core\Modules::update( array( 'access' => true ) );
+FinetTroubleshoot\Access\AccessSettings::update( array( 'adapter' => 'mock', 'rate_limit' => 100 ) );
+( new FinetTroubleshoot\Access\AccessService() )->sync( false );
+$access = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Adresskoll', 'post_name' => 'adresskoll', 'post_content' => '[wpfinet_access_check title="Kan du få fiber?"]' ) );
 ( new FinetTroubleshoot\Outages\OutageRepository() )->flush();
 echo wp_json_encode( array( 'guide' => $guide, 'outage' => $outage, 'outage_url' => get_permalink( $outage ), 'page' => get_permalink( $page ) ) );
