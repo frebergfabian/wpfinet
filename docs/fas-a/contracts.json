@@ -1,0 +1,57 @@
+{
+  "source": "finet-troubleshoot 2.0.1",
+  "plugin": { "dir": "finet-troubleshoot", "file": "finet-troubleshoot.php", "namespace": "FinetTroubleshoot", "text_domain": "finet-troubleshoot", "constants": ["FINET_TS_VERSION", "FINET_TS_FILE", "FINET_TS_DIR", "FINET_TS_URL"] },
+  "shortcodes": {
+    "finet_troubleshoot": { "atts": { "id": "", "slug": "", "class": "", "show_title": "", "show_restart": "" }, "status": "bevaras" },
+    "wpfinet_outages": { "atts": { "status": "all", "service": "", "provider": "", "area": "", "limit": 10, "filters": "false" }, "status_values": ["all", "current", "upcoming", "past"], "status": "bevaras" },
+    "wpfinet_outage_status": { "atts": {}, "status": "bevaras" },
+    "wpgetapi_endpoint": { "owner": "WPGetAPI (tredjepart)", "status": "ersätts av wpfinet_access_check efter verifiering; ingen alias" }
+  },
+  "rest": [
+    { "ns": "finet-troubleshoot/v1", "route": "/guides", "methods": ["GET"], "perm": "manage_wpfinet_guides|edit_posts", "keys": ["id", "title", "slug", "description", "status", "external_id", "start_node", "nodes", "settings"] },
+    { "ns": "finet-troubleshoot/v1", "route": "/guides/{id}", "methods": ["GET"], "perm": "manage_wpfinet_guides|edit_posts + edit_post", "errors": ["finet_ts_not_found:404", "finet_ts_forbidden:403"], "note": "2.0.1: HTTP 500 på PHP 8 (B23)" },
+    { "ns": "finet-troubleshoot/v1", "route": "/guides/{id}", "methods": ["POST", "PUT", "PATCH"], "perm": "manage_wpfinet_guides|edit_posts + edit_post", "keys": ["guide", "validation"], "errors": ["finet_ts_invalid_payload:400", "finet_ts_invalid_flow:400"] },
+    { "ns": "finet-troubleshoot/v1", "route": "/guides/{id}/duplicate", "methods": ["POST"], "perm": "manage_wpfinet_guides|edit_posts + edit_post" },
+    { "ns": "finet-troubleshoot/v1", "route": "/validate", "methods": ["POST"], "perm": "manage_wpfinet_guides|edit_posts", "keys": ["valid", "errors", "warnings", "summary"] },
+    { "ns": "finet-troubleshoot/v1", "route": "/import/preview", "methods": ["POST"], "perm": "manage_wpfinet_settings|manage_options", "errors": ["finet_ts_missing_file:400", "finet_ts_file_too_large:400", "finet_ts_invalid_json:400"] },
+    { "ns": "finet-troubleshoot/v1", "route": "/import", "methods": ["POST"], "perm": "manage_wpfinet_settings|manage_options", "keys": ["items", "errors", "warnings", "imported", "skipped", "failed"], "errors": ["finet_ts_import_expired:400"] },
+    { "ns": "finet-troubleshoot/v1", "route": "/export/{id}", "methods": ["GET"], "perm": "manage_wpfinet_settings|manage_options", "keys": ["schema", "schema_version", "generated_at", "generator", "guides", "outages"] },
+    { "ns": "wpfinet/v1", "route": "/outages/current", "methods": ["GET"], "perm": "public", "query": ["service", "provider", "area"] },
+    { "ns": "wpfinet/v1", "route": "/outages", "methods": ["GET"], "perm": "public", "query": ["status", "service", "provider", "area"] },
+    { "ns": "wpfinet/v1", "route": "/events", "methods": ["POST"], "perm": "public (consent-gated)", "keys_rejected": ["accepted", "reason"], "keys_accepted": ["accepted", "stored"] },
+    { "ns": "wpfinet/v1", "route": "/analytics/summary", "methods": ["GET"], "perm": "view_wpfinet_statistics|manage_options", "query": ["days"], "keys": ["days", "starts", "completions", "abandoned", "completion_rate", "average_steps"] },
+    { "ns": "wp/v2", "route": "/finet_ts_guide", "methods": ["core"], "perm": "core" },
+    { "ns": "wp/v2", "route": "/wpfinet_outage", "methods": ["core"], "perm": "core" },
+    { "ns": "wp/v2", "route": "/wpfinet_provider|/wpfinet_service|/wpfinet_area", "methods": ["core"], "perm": "core" }
+  ],
+  "hooks": {
+    "actions": { "finet_troubleshoot_before_render": ["post_id", "data"], "finet_troubleshoot_after_render": ["post_id", "data"], "finet_troubleshoot_import_guide": ["post_id", "guide", "strategy"] },
+    "filters": { "finet_troubleshoot_guide_data": ["data", "post_id"], "finet_troubleshoot_allowed_html": ["allowed"], "finet_troubleshoot_max_import_size": [5242880], "finet_troubleshoot_max_import_guides": [100], "finet_troubleshoot_max_nodes_per_guide": [500], "finet_troubleshoot_max_options_per_node": [50], "wpfinet_consent_provider_available": ["available"] },
+    "cron": ["wpfinet_daily_maintenance"],
+    "admin_post": ["finet_ts_duplicate", "finet_ts_export", "finet_ts_reinstall_demo"]
+  },
+  "post_types": {
+    "finet_ts_guide": { "public": false, "rest": true, "rewrite": false, "meta": ["_finet_ts_external_id", "_finet_ts_start_node", "_finet_ts_nodes", "_finet_ts_settings", "_finet_ts_schema_version"] },
+    "wpfinet_outage": { "public": true, "rest": true, "archive": "/driftstorningar/", "single": ["/driftstorningar/{Y}/{m}/{d}/{post_name}/", "/driftstorningar/{post_name}/"], "meta": ["_wpfinet_incident_type", "_wpfinet_outage_status", "_wpfinet_incident_start", "_wpfinet_estimated_end", "_wpfinet_actual_end", "_wpfinet_priority", "_wpfinet_banner", "_wpfinet_timeline", "_wpfinet_area_note", "_wpfinet_internal_note", "_wpfinet_external_id"] }
+  },
+  "taxonomies": ["wpfinet_provider", "wpfinet_service", "wpfinet_area"],
+  "enums": {
+    "node_types": ["information", "action", "question", "check", "result", "support", "outage", "wpforms"],
+    "result_types": ["success", "info", "warning", "failure"],
+    "cta_types": ["phone", "email", "wpforms", "url", "support", "restart", "back", "internal"],
+    "outage_status": ["scheduled", "investigating", "identified", "in_progress", "monitoring", "resolved", "cancelled"],
+    "incident_type": ["acute", "planned"],
+    "priority": ["low", "normal", "high", "critical"],
+    "events": ["guide_viewed", "guide_started", "node_viewed", "answer_selected", "guide_completed", "guide_abandoned", "result_reached", "cta_viewed", "cta_clicked", "outage_displayed", "outage_clicked", "wpform_displayed", "wpform_started", "wpform_submitted", "restart_clicked", "back_clicked"],
+    "import_strategies": ["copy", "update", "skip"],
+    "schema_versions_import": ["1.0", "2.0"], "schema_version_export": "2.0"
+  },
+  "options": ["finet_ts_settings", "finet_ts_demo_installed", "finet_ts_schema_version", "finet_ts_db_version", "finet_ts_upgrade_notice", "finet_ts_migration_log", "wpfinet_outage_rewrite_version"],
+  "transients": ["finet_ts_activation_notice", "finet_ts_import_{uuid}", "wpfinet_outages_{md5}", "wpfinet_event_rate_{md5}"],
+  "tables": ["{prefix}wpfinet_sessions", "{prefix}wpfinet_events"],
+  "capabilities": ["manage_wpfinet", "manage_wpfinet_guides", "publish_wpfinet_guides", "manage_wpfinet_outages", "publish_wpfinet_outages", "view_wpfinet_statistics", "manage_wpfinet_settings"],
+  "admin_slugs": ["admin.php?page=wpfinet", "edit.php?post_type=finet_ts_guide", "post-new.php?post_type=finet_ts_guide", "edit.php?post_type=wpfinet_outage", "post-new.php?post_type=wpfinet_outage", "admin.php?page=wpfinet-statistics", "admin.php?page=finet-ts-import-export", "admin.php?page=finet-ts-import-format", "admin.php?page=finet-ts-settings"],
+  "client_storage": { "cookies": [], "sessionStorage": ["wpfinet_analytics_session", "wpfinet_banner_dismissed_{version}"] },
+  "asset_handles": ["finet-troubleshoot", "finet-troubleshoot-admin", "wpfinet-outages"],
+  "public_urls_from_user": ["https://dev.finet.se/", "https://dev.finet.se/tjansteguide/#/serviceguide/", "https://dev.finet.se/home/kundservice/", "https://dev.finet.se/fragor-och-svar/", "https://dev.finet.se/kontakta-oss/", "/tjanster", "/kontakta-oss"]
+}
