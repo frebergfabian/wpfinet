@@ -31,6 +31,7 @@ final class AdminApp {
 		add_action( 'admin_post_wpfinet_grant_editors', array( $this, 'grant_editors' ) );
 		add_action( 'admin_notices', array( $this, 'notices' ) );
 		\FinetTroubleshoot\Access\AccessAdmin::register_hooks();
+		\FinetTroubleshoot\Instagram\InstagramAdmin::register_hooks();
 	}
 
 	public function menu(): void {

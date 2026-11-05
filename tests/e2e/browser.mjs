@@ -50,11 +50,11 @@ try {
 	check('address check: not connected → /kontakta-oss', (await result.locator('a').getAttribute('href')) === '/kontakta-oss');
 	await input.fill('Storgatan'); await input.press('Enter');
 	check('address check: invalid format handled client-side', (await result.getAttribute('class')).includes('is-invalid') && (await input.getAttribute('aria-invalid')) === 'true');
-	const responses = [];
-	page.on('response', async (r) => { if (r.url().includes('/access/check')) { responses.push(await r.text()); } });
-	await input.fill('Exempelgatan 1'); await input.press('Enter');
+	await input.fill('Exempelgatan 1');
+	const [resp] = await Promise.all([page.waitForResponse((r) => r.url().includes('/access/check')), input.press('Enter')]);
+	const body = await resp.text();
 	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-connected'));
-	check('address check: response contains one status only', responses.length === 1 && !responses[0].includes('Exempelgatan') && responses[0].length < 400, responses[0]);
+	check('address check: response contains one status only', !body.includes('Exempelgatan') && body.length < 400 && JSON.parse(body).status === 'connected', body);
 	check('address check: no inline script in page content', (await page.locator('.wpfinet-access script').count()) === 0);
 	await page.route('**/access/check', (route) => route.abort());
 	await input.fill('Exempelgatan 1'); await input.press('Enter');
@@ -83,6 +83,9 @@ try {
 	await a.waitForTimeout(1500);
 	const cards = await a.locator('.wpfinet-statistics__cards').innerText();
 	check('statistics page loads summary', /Startade/.test(cards) && !/kunde inte/.test(cards), cards.replace(/\s+/g, ' '));
+	await a.goto(`${B}/wp-admin/post-new.php?post_type=page`);
+	await a.waitForFunction(() => window.wp && wp.blocks && wp.blocks.getBlockTypes().length > 10, null, { timeout: 30000 });
+	check('blocks registered in editor', await a.evaluate(() => !!wp.blocks.getBlockType('wpfinet/access-check') && !!wp.blocks.getBlockType('wpfinet/instagram-feed')));
 	check('no JS errors in admin', adminErrors.length === 0, adminErrors.join('; '));
 } finally {
 	await browser.close();

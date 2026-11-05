@@ -21,6 +21,19 @@ final class HttpClient {
 
 	public function breaker(): CircuitBreaker { return $this->breaker; }
 
+	/** Exact host match, or suffix match for entries starting with a dot (".cdninstagram.com"). @param array<int,string> $allowed */
+	public static function host_allowed( string $host, array $allowed ): bool {
+		$host = strtolower( $host );
+		foreach ( $allowed as $entry ) {
+			$entry = strtolower( trim( $entry ) );
+			if ( '' === $entry ) { continue; }
+			if ( $host === $entry || ( str_starts_with( $entry, '.' ) && str_ends_with( $host, $entry ) && strlen( $host ) > strlen( $entry ) ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * @param array<string,mixed> $options method, headers, body, timeout (s), retries (background only), max_bytes.
 	 * @return array{ok:bool,status:int,body:string,headers:array<string,string>,error:string,duration_ms:int}
@@ -31,7 +44,7 @@ final class HttpClient {
 		if ( 'https' !== strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) ) {
 			return $fail( 'Endast https tillåts.' );
 		}
-		if ( ! $host || ! in_array( $host, array_map( 'strtolower', $this->allowed_hosts ), true ) ) {
+		if ( ! $host || ! self::host_allowed( $host, $this->allowed_hosts ) ) {
 			return $fail( sprintf( 'Värden %s finns inte i allowlist.', $host ?: '(saknas)' ) );
 		}
 		if ( $this->breaker->is_open() ) {

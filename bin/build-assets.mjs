@@ -11,7 +11,7 @@ const map = {
 	'admin.js': 'src/admin/runtime.js', 'admin.css': 'src/admin/admin.css', 'wpfinet-admin.css': 'src/admin/wpfinet-admin.css',
 	'outages.js': 'src/outages/runtime.js', 'outages.css': 'src/outages/outages.css',
 	'access.js': 'src/access/runtime.js', 'access.css': 'src/access/access.css', 'access-admin.js': 'src/access/admin.js',
-	'instagram.css': 'src/instagram/instagram.css',
+	'instagram.css': 'src/instagram/instagram.css', 'blocks.js': 'src/blocks/editor.js',
 	'consent.js': 'src/consent/runtime.js', 'consent.css': 'src/consent/consent.css', 'consent-admin.js': 'src/consent/admin.js',
 };
 mkdirSync(join(root, 'build'), { recursive: true });
