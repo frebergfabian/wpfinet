@@ -4,7 +4,7 @@ Tags: troubleshoot, support, guide, flow, elementor
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,11 @@ Ja. Exportera guiden som JSON och importera den på den andra webbplatsen.
 3. En publicerad guide på mobil.
 
 == Changelog ==
+
+= 3.1.1 =
+* Felsökningsguiden: rättar att guiden krympte till en smal kolumn (0 px) i Elementor-containrar med innehållsanpassad bredd och att text bröts bokstav för bokstav. Stabil höjd med CSS i stället för JavaScript-mätning; första steget renderas på servern.
+* Driftbannern och modulernas CSS laddas i <head>; ingen layoutförskjutning (CLS) från bannern, även efter att den stängts och utan wp_body_open.
+* Instagramflödet: fast storlek på bilder och bildtexter.
 
 = 3.1.0 =
 * Instagram: stöd för både Instagram Login och Facebook Login, automatisk och manuell Instagram Account ID, anslutningstest med Metas felmeddelanden.

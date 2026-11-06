@@ -17,7 +17,7 @@ use FinetTroubleshoot\Analytics\Database;
 use FinetTroubleshoot\PostTypes\GuidePostType;
 
 final class MigrationManager {
-	public const VERSION = '3.1.0';
+	public const VERSION = '3.1.1';
 
 	public function register_hooks(): void { add_action( 'admin_init', array( $this, 'maybe_migrate' ) ); }
 

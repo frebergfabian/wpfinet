@@ -1,29 +1,36 @@
 .wpfinet-outages{--wpfinet-primary:#06284d;--wpfinet-accent:#f47c20;--wpfinet-surface:#fff;--wpfinet-border:#d9e0e8;font-family:inherit;color:inherit}.wpfinet-outages__section{margin:2rem 0}.wpfinet-outages__section h2{font-weight:700;font-size:1.25em;line-height:1.3;font-family:inherit}.wpfinet-outages__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.wpfinet-outage-card{padding:20px;border:1px solid var(--wpfinet-border);border-radius:10px;background:var(--wpfinet-surface);box-shadow:0 4px 16px rgb(6 40 77 / 5%)}.wpfinet-outage-card h3{margin:.5rem 0;font-weight:700;font-size:1.2em;line-height:1.35;font-family:inherit}.wpfinet-outage-card h3 a,.wpfinet-outage-card__link{color:var(--wpfinet-primary)}.wpfinet-outage-card__meta{color:#526070;font-size:.9em}.wpfinet-badge{display:inline-block;padding:.18rem .5rem;border-radius:99px;background:#eaf1f8;color:#06284d;font-size:.78em;font-weight:700}.wpfinet-badge--status{background:#fff0e3;color:#7b3500}.wpfinet-outages__empty{padding:16px;border:1px dashed var(--wpfinet-border);color:#526070}.wpfinet-outage-status{display:inline-flex;gap:.4rem;align-items:center;text-decoration:none;font-weight:700}.wpfinet-outage-status.is-clear{color:#187441}.wpfinet-outage-status.is-affected{color:#9a4300}.wpfinet-outage-detail dl{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:.5rem 1rem}.wpfinet-outage-detail dt{font-weight:700}.wpfinet-outage-detail dd{margin:0}.wpfinet-outage-detail__warning{padding:12px;border-left:3px solid #f47c20;background:#fff8f2}.wpfinet-timeline{margin:0;padding:0;list-style:none}.wpfinet-timeline li{padding:12px 0;border-top:1px solid #d9e0e8}.wpfinet-timeline time,.wpfinet-timeline strong{display:block}@media(max-width:600px){.wpfinet-outage-detail dl{grid-template-columns:1fr}}
 
-/* Driftbanner (3.1) – Finet colours, wraps on small screens, close button that really hides it. */
-.wpfinet-banner { position: relative; z-index: 9990; display: block; width: 100%; background: #0f172a; color: #fff; border-bottom: 3px solid #fd9800; font-family: inherit; font-size: 15px; line-height: 1.45; }
-.wpfinet-banner[hidden] { display: none !important; }
+/* Driftbanner (3.1.1) – printed in <head> before the banner renders, so the first paint is final (no CLS):
+ * - system font stack: no web-font swap that changes the banner's width or height after load;
+ * - fixed box sizes for icon, "Läs mer" and close, and theme button styles (Astra/Elementor) neutralised;
+ * - a banner closed earlier in this session is hidden by a class set in <head> before paint;
+ * - the fallback (themes without wp_body_open) is fixed to the bottom of the viewport instead of being moved. */
+.wpfinet-banner { --wpfinet-banner-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; position: relative; z-index: 9990; display: block; box-sizing: border-box; width: 100%; margin: 0; padding: 0; background: #0f172a; color: #fff; border-bottom: 3px solid #fd9800; font-family: var(--wpfinet-banner-font); font-size: 15px; font-weight: 400; line-height: 22px; letter-spacing: normal; text-align: left; }
+.wpfinet-banner *, .wpfinet-banner *::before, .wpfinet-banner *::after { box-sizing: border-box; }
+.wpfinet-banner[hidden], .wpfinet-banner-dismissed .wpfinet-banner { display: none !important; }
 .wpfinet-banner--planned { background: #fef9e1; color: #0f172a; border-bottom-color: #e98c00; }
-.wpfinet-banner__inner { box-sizing: border-box; display: flex; align-items: center; gap: 10px 16px; max-width: 1200px; margin: 0 auto; padding: 10px 16px 10px 20px; }
-.wpfinet-banner__icon { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #fd9800; }
-.wpfinet-banner__icon::before { content: "!"; display: block; color: #0f172a; font-weight: 800; font-size: 15px; line-height: 22px; text-align: center; }
-.wpfinet-banner__text { flex: 1 1 auto; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.wpfinet-banner__label { display: inline-block; margin-right: 6px; color: #fdbb4d; font-size: .82em; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.wpfinet-banner .wpfinet-banner__inner { display: flex; align-items: center; gap: 10px 16px; max-width: 1200px; min-height: 61px; margin: 0 auto; padding: 8px 12px 8px 20px; }
+.wpfinet-banner .wpfinet-banner__icon { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; background: #fd9800; }
+.wpfinet-banner .wpfinet-banner__icon::before { content: "!"; display: block; color: #0f172a; font-weight: 800; font-size: 15px; line-height: 22px; text-align: center; }
+.wpfinet-banner .wpfinet-banner__text { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; font: inherit; color: inherit; overflow-wrap: break-word; }
+.wpfinet-banner .wpfinet-banner__label { display: inline-block; margin-right: 6px; color: #fdbb4d; font-size: 12px; font-weight: 700; letter-spacing: .03em; line-height: 22px; text-transform: uppercase; }
 .wpfinet-banner--planned .wpfinet-banner__label { color: #8a5400; }
-.wpfinet-banner__title { font-weight: 700; color: inherit; }
+.wpfinet-banner .wpfinet-banner__title { font-weight: 700; color: inherit; }
 .wpfinet-banner a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
-.wpfinet-banner__more { margin-left: 6px; font-size: .9em; white-space: nowrap; }
-.wpfinet-banner__link { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 2px solid currentColor; border-radius: 5px; font-weight: 600; text-decoration: none !important; white-space: nowrap; }
-.wpfinet-banner__link:hover { background: #fd9800; border-color: #fd9800; color: #0f172a; }
-.wpfinet-banner__close { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 26px; line-height: 1; cursor: pointer; }
-.wpfinet-banner__close:hover { background: rgb(255 255 255 / 12%); }
-.wpfinet-banner--planned .wpfinet-banner__close:hover { background: rgb(15 23 42 / 8%); }
-.wpfinet-banner a:focus-visible, .wpfinet-banner__close:focus-visible { outline: 3px solid #fd9800; outline-offset: 2px; }
+.wpfinet-banner .wpfinet-banner__more { margin-left: 6px; font-size: 14px; white-space: nowrap; }
+.wpfinet-banner .wpfinet-banner__link { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; height: 40px; min-width: 96px; margin: 0; padding: 0 16px; border: 2px solid currentColor; border-radius: 5px; background: transparent; box-shadow: none; font: 600 15px/1 var(--wpfinet-banner-font); letter-spacing: normal; text-transform: none; text-decoration: none; white-space: nowrap; }
+.wpfinet-banner .wpfinet-banner__link:hover { background: #fd9800; border-color: #fd9800; color: #0f172a; }
+.wpfinet-banner .wpfinet-banner__close { flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; color: inherit; font: 400 26px/1 var(--wpfinet-banner-font); letter-spacing: normal; text-transform: none; cursor: pointer; }
+.wpfinet-banner .wpfinet-banner__close:hover, .wpfinet-banner .wpfinet-banner__close:focus { background: rgb(255 255 255 / 12%); color: inherit; border: 0; }
+.wpfinet-banner--planned .wpfinet-banner__close:hover, .wpfinet-banner--planned .wpfinet-banner__close:focus { background: rgb(15 23 42 / 8%); }
+.wpfinet-banner a:focus-visible, .wpfinet-banner .wpfinet-banner__close:focus-visible { outline: 3px solid #fd9800; outline-offset: 2px; }
 .wpfinet-banner .screen-reader-text { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wpfinet-banner--fallback { position: fixed; left: 0; right: 0; bottom: 0; border-top: 3px solid #fd9800; border-bottom: 0; box-shadow: 0 -4px 18px rgb(15 23 42 / 18%); }
+.wpfinet-banner-spacer { display: block; height: 0; }
 @media (max-width: 640px) {
-	.wpfinet-banner__inner { flex-wrap: wrap; align-items: flex-start; column-gap: 10px; padding: 10px 6px 12px 14px; }
-	.wpfinet-banner__icon { margin-top: 2px; }
-	.wpfinet-banner__text { flex: 1 1 calc(100% - 110px); }
-	.wpfinet-banner__close { order: 2; margin-top: -8px; }
-	.wpfinet-banner__link { order: 3; margin-left: 32px; }
+	.wpfinet-banner .wpfinet-banner__inner { flex-wrap: wrap; align-items: flex-start; column-gap: 10px; padding: 10px 6px 12px 14px; }
+	.wpfinet-banner .wpfinet-banner__icon { margin-top: 0; }
+	.wpfinet-banner .wpfinet-banner__text { flex: 1 1 calc(100% - 110px); }
+	.wpfinet-banner .wpfinet-banner__close { order: 2; margin-top: -11px; }
+	.wpfinet-banner .wpfinet-banner__link { order: 3; margin-left: 32px; }
 }

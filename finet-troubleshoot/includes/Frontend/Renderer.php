@@ -20,8 +20,8 @@ final class Renderer {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 	}
 	public function register_assets(): void {
-		wp_register_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), FINET_TS_VERSION );
-		wp_register_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), FINET_TS_VERSION, true );
+		wp_register_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.css' ) );
+		wp_register_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.js' ), true );
 	}
 	public function render( \WP_Post $post, array $attributes = array() ): string {
 		$this->ensure_assets();
@@ -39,7 +39,7 @@ final class Renderer {
 		?>
 		<section id="<?php echo esc_attr( $id ); ?>" class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" style="<?php echo esc_attr( $style ); ?>" data-finet-troubleshoot>
 			<script type="application/json" class="finet-troubleshoot__data"><?php echo wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></script>
-			<div class="finet-troubleshoot__mount" aria-live="polite"></div>
+			<div class="finet-troubleshoot__mount" aria-live="polite"><?php echo empty( $data['preview'] ) ? GuideMarkup::render( $data ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in GuideMarkup. ?></div>
 		</section>
 		<?php
 		do_action( 'finet_troubleshoot_after_render', $post->ID, $data );

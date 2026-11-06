@@ -14,16 +14,16 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 	const samples = [];
 	for (let step = 0; step < 12; step++) {
 		const s = await page.evaluate(() => {
-			const shell = document.querySelector('.wpfinet-guide'), card = shell.querySelector('.wpfinet-guide__card'), after = document.getElementById('after-guide');
+			const shell = document.querySelector('.wpfinet-guide'), card = shell.querySelector('[data-stage] > [data-node]'), after = document.getElementById('after-guide');
 			const btns = [...card.querySelectorAll('.wpfinet-guide__options .wpfinet-guide__button')], btn = btns[btns.length - 1];
 			const imgs = [...card.querySelectorAll('img.wpfinet-guide__img')].map((i) => { const f = i.closest('.wpfinet-guide__frame').getBoundingClientRect(), r = i.getBoundingClientRect(); return r.width <= f.width + 1 && r.height <= f.height + 1; });
 			const clipped = [...card.querySelectorAll('.wpfinet-guide__text, .wpfinet-guide__button')].some((e) => e.scrollWidth > e.clientWidth + 1);
 			return { stage: shell.querySelector('.wpfinet-guide__stage').getBoundingClientRect().height, after: after ? after.getBoundingClientRect().top + scrollY : 0, btnH: btn ? Math.round(btn.getBoundingClientRect().height) : null, rowEqual: new Set(btns.filter((b) => Math.round(b.getBoundingClientRect().top) === Math.round(btns[0].getBoundingClientRect().top)).map((b) => Math.round(b.getBoundingClientRect().height))).size <= 1, minH: btns.every((b) => b.getBoundingClientRect().height >= 49), btnFromBottom: btn ? Math.round(card.getBoundingClientRect().bottom - btn.getBoundingClientRect().bottom) : null, navTop: Math.round(shell.querySelector('.wpfinet-guide__navigation').getBoundingClientRect().top - shell.getBoundingClientRect().top), imgs, clipped, overflow: document.documentElement.scrollWidth - innerWidth, heading: card.querySelector('.wpfinet-guide__heading').textContent };
 		});
-		if (s.imgs.length) { await page.waitForFunction(() => [...document.querySelectorAll('.wpfinet-guide__card img')].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 }).then(() => { s.loaded = true; }).catch(() => { s.loaded = false; }); } else { s.loaded = true; }
+		if (s.imgs.length) { await page.waitForFunction(() => [...document.querySelectorAll('[data-stage] > [data-node] img')].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 }).then(() => { s.loaded = true; }).catch(() => { s.loaded = false; }); } else { s.loaded = true; }
 		samples.push(s);
 		await page.locator('.wpfinet-guide').screenshot({ path: `${OUT}/step${step}-${w}.png` });
-		const next = page.locator('.wpfinet-guide__card [data-next]').first();
+		const next = page.locator('[data-stage] > [data-node] [data-next]').first();
 		if (!(await next.count())) { break; }
 		await next.click(); await page.waitForTimeout(350);
 	}

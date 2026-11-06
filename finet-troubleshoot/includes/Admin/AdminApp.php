@@ -71,7 +71,7 @@ final class AdminApp {
 		if ( ! self::is_wpfinet_screen() ) {
 			return;
 		}
-		wp_enqueue_style( 'wpfinet-admin', FINET_TS_URL . 'assets/build/wpfinet-admin.css', array(), FINET_TS_VERSION );
+		wp_enqueue_style( 'wpfinet-admin', FINET_TS_URL . 'assets/build/wpfinet-admin.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'wpfinet-admin.css' ) );
 	}
 
 	public function shell_header(): void {

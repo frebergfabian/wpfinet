@@ -31,8 +31,8 @@ final class AdminMenu {
 	}
 	public function assets( string $hook ): void {
 		if ( false === strpos( $hook, 'wpfinet' ) && false === strpos( $hook, 'finet-ts' ) ) { return; }
-		wp_enqueue_style( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.css', array(), FINET_TS_VERSION );
-		wp_enqueue_script( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.js', array( 'wp-api-fetch', 'wp-i18n' ), FINET_TS_VERSION, true );
+		wp_enqueue_style( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'admin.css' ) );
+		wp_enqueue_script( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.js', array( 'wp-api-fetch', 'wp-i18n' ), \FinetTroubleshoot\Core\Assets::ver( 'admin.js' ), true );
 		wp_add_inline_script( 'finet-troubleshoot-admin', 'window.FinetTroubleshootAdmin=' . wp_json_encode( array( 'restRoot' => esc_url_raw( rest_url( 'finet-troubleshoot/v1/' ) ), 'wpfinetRoot' => esc_url_raw( rest_url( 'wpfinet/v1/' ) ), 'nonce' => wp_create_nonce( 'wp_rest' ), 'strings' => array( 'saved' => __( 'Sparad.', 'finet-troubleshoot' ), 'copied' => __( 'Shortcode kopierad.', 'finet-troubleshoot' ) ) ) ) . ';', 'before' );
 	}
 	public function register_menu(): void {

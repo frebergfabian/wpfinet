@@ -1,14 +1,18 @@
-/* WPFINET guide runtime (3.1): local navigation, consent-gated first-party statistics and a visually stable stage.
+/* WPFINET guide runtime: local navigation, consent-gated first-party statistics and a visually stable stage.
  * Data format, events, public API (FinetTroubleshootRuntime.mount → go/back/restart/getPath) and CSS class names of
- * 2.x/3.0 are kept. New in 3.1: the stage reserves the height of the tallest step (measured invisibly), actions sit
- * at the bottom of the card and the navigation row always keeps its place, so nothing below the guide jumps. */
+ * 2.x/3.0 are kept.
+ * 3.1.1: no JavaScript measuring. The stage holds an invisible "sizer" with every step stacked in one grid cell, so
+ * CSS keeps the stage as tall as the tallest step at any width (3.1.0 measured once and could measure at width 0).
+ * The server renders the same markup (includes/Frontend/GuideMarkup.php); the runtime adopts it (data-ssr) instead of
+ * re-rendering, so nothing moves when the script starts. */
 (function () {
 	'use strict';
 	var S = { step: 'Steg', of: 'av', back: 'Tillbaka', restart: 'Börja om', restartText: 'Vill du börja om felsökningen?', cancel: 'Avbryt', confirm: 'Börja om', missing: 'Detta steg kunde inte laddas.', close: 'Stäng', checking: 'Kontrollerar driftstatus …', outageFound: 'Det finns just nu en driftstörning som kan påverka dig.', outageNone: 'Inga matchande driftstörningar hittades.', outageLink: 'Visa driftinformationen', supportPage: 'Öppna supportsidan', zoom: 'Förstora bilden', next: 'Fortsätt' };
-	var MAX_MEASURED_NODES = 200;
+	var MAX_SIZER_NODES = 200;
 
 	function safeHref(v) { v = String(v == null ? '' : v).trim(); if (!v) { return '#'; } if (/^[\/#?]/.test(v) && v.indexOf('//') !== 0) { return v; } var m = /^([a-z][a-z0-9+.-]*):/i.exec(v); if (!m) { return v.indexOf('//') === 0 ? '#' : v; } return ['http', 'https', 'mailto', 'tel'].indexOf(m[1].toLowerCase()) !== -1 ? v : '#'; }
-	function esc(v) { var e = document.createElement('span'); e.textContent = v == null ? '' : String(v); return e.innerHTML; }
+	/* Escapes for text AND attribute values (3.1.1: quotes too – before, a quote in a title or label ended the attribute). */
+	function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 	function nodesById(nodes) { return (nodes || []).reduce(function (map, node) { if (node && node.id) { map[node.id] = node; } return map; }, {}); }
 	function uuid() { return window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : r & 3 | 8).toString(16); }); }
 	function device() { return innerWidth < 768 ? 'mobile' : innerWidth < 1024 ? 'tablet' : innerWidth ? 'desktop' : 'unknown'; }
@@ -71,7 +75,11 @@
 		actions.push(ctasHTML(node));
 		var cls = 'wpfinet-guide__card wpfinet-guide__card--' + esc(node.type || 'information') + (node.type === 'result' ? ' wpfinet-guide__result--' + esc(node.result_type || 'info') : '') + (side ? ' wpfinet-guide__card--media-' + placement : '') + (node.css_class ? ' ' + esc(node.css_class) : '');
 		var actionsHtml = actions.join('');
-		return '<article class="' + cls + '"><div class="wpfinet-guide__body">' + body.join('') + '</div>' + (actionsHtml ? '<div class="wpfinet-guide__actions">' + actionsHtml + '</div>' : '') + '</article>';
+		return '<article class="' + cls + '"' + (measuring ? '' : ' data-node="' + esc(node.id) + '"') + '><div class="wpfinet-guide__body">' + body.join('') + '</div>' + (actionsHtml ? '<div class="wpfinet-guide__actions">' + actionsHtml + '</div>' : '') + '</article>';
+	}
+
+	function sizerHTML(data) {
+		return '<div class="wpfinet-guide__sizer" aria-hidden="true" inert>' + (data.nodes || []).filter(function (n) { return n && n.id && !n.form_html; }).slice(0, MAX_SIZER_NODES).map(function (n) { return cardHTML(n, data, true); }).join('') + '</div>';
 	}
 
 	function mount(root, data) {
@@ -79,41 +87,24 @@
 		var point = root.querySelector('.finet-troubleshoot__mount') || root, nodes = nodesById(data.nodes), current = data.start_node, history = [current], moved = false, tracker = new Tracker(data);
 		var general = data.settings && data.settings.general || {}, animate = (general.animation || 'fade') !== 'none' && !reducedMotion();
 		var showTitle = general.show_title !== false && !!data.title, progressMode = general.progress_mode || 'step', showBack = general.show_back !== false, showRestart = general.show_restart !== false;
-		point.innerHTML = '<div class="wpfinet-guide">' +
+		var ssr = point.querySelector('.wpfinet-guide[data-ssr]'), adopt = !!(ssr && ssr.getAttribute('data-ssr') === String(current) && ssr.querySelector('[data-stage] > [data-node]') && !data.preview);
+		if (!adopt) { point.innerHTML = '<div class="wpfinet-guide">' +
 			(showTitle || progressMode !== 'none' ? '<header class="wpfinet-guide__header">' + (showTitle ? '<h2 class="wpfinet-guide__title">' + esc(data.title) + '</h2>' : '') + (progressMode !== 'none' ? '<div class="wpfinet-guide__progress-row"><p class="wpfinet-guide__progress" data-progress></p>' + (progressMode === 'bar' ? '<div class="wpfinet-guide__progressbar" role="progressbar" aria-label="' + esc(S.step) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>' : '') + '</div>' : '') + '</header>' : '') +
-			'<div class="wpfinet-guide__stage" data-stage aria-live="polite"></div>' +
+			'<div class="wpfinet-guide__stage" data-stage aria-live="polite">' + sizerHTML(data) + '</div>' +
 			(showBack || showRestart ? '<nav class="wpfinet-guide__navigation" aria-label="' + esc(data.title || S.step) + '">' + (showBack ? '<button type="button" class="wpfinet-guide__text-button" data-back>← ' + esc(S.back) + '</button>' : '<span></span>') + (showRestart ? '<button type="button" class="wpfinet-guide__text-button" data-restart>' + esc(S.restart) + '</button>' : '') + '</nav>' : '') +
 			(data.preview && data.debug ? '<aside class="wpfinet-guide__debug" data-debug></aside>' : '') +
-			'</div>';
-		var shell = point.firstChild, stage = shell.querySelector('[data-stage]'), progressEl = shell.querySelector('[data-progress]'), bar = shell.querySelector('.wpfinet-guide__progressbar'), backBtn = shell.querySelector('[data-back]'), restartBtn = shell.querySelector('[data-restart]'), debugEl = shell.querySelector('[data-debug]');
+			'</div>'; }
+		var shell = adopt ? ssr : point.firstChild, stage = shell.querySelector('[data-stage]'), progressEl = shell.querySelector('[data-progress]'), bar = shell.querySelector('.wpfinet-guide__progressbar'), backBtn = shell.querySelector('[data-back]'), restartBtn = shell.querySelector('[data-restart]'), debugEl = shell.querySelector('[data-debug]');
 
 		function remaining(id) { var seen = {}, queue = [[id, 0]]; while (queue.length) { var item = queue.shift(), n = nodes[item[0]]; if (!n || seen[item[0]]) { continue; } seen[item[0]] = true; if (n.type === 'result' || n.type === 'support') { return item[1]; } var next = []; if (n.next) { next.push(n.next); } (n.options || []).forEach(function (o) { if (o.next) { next.push(o.next); } }); if (n.outage) { if (n.outage.match_node) { next.push(n.outage.match_node); } if (n.outage.no_match_node) { next.push(n.outage.no_match_node); } } next.forEach(function (x) { queue.push([x, item[1] + 1]); }); } return Infinity; }
 
-		/* Reserve the height of the tallest step so the page below the guide never jumps between steps. */
-		var lastWidth = 0;
-		function measure() {
-			var width = stage.clientWidth; if (!width) { return; }
-			lastWidth = width;
-			var list = (data.nodes || []).filter(function (n) { return n && n.id && !n.form_html; }).slice(0, MAX_MEASURED_NODES);
-			var probe = document.createElement('div');
-			probe.className = 'wpfinet-guide__stage wpfinet-guide__probe';
-			probe.setAttribute('aria-hidden', 'true');
-			probe.style.width = width + 'px';
-			shell.appendChild(probe);
-			var max = 0;
-			list.forEach(function (n) { probe.innerHTML = cardHTML(n, data, true); max = Math.max(max, probe.firstChild ? probe.firstChild.offsetHeight : 0); });
-			probe.remove();
-			// On small screens never reserve more than 80 % of the viewport: a short step must not push its buttons off-screen.
-			if (innerWidth < 700) { max = Math.min(max, Math.max(420, Math.round(innerHeight * 0.8))); }
-			if (max) { stage.style.minHeight = Math.ceil(max) + 'px'; }
-		}
-		function scheduleMeasure() { clearTimeout(scheduleMeasure.t); scheduleMeasure.t = setTimeout(function () { if (stage.clientWidth !== lastWidth) { measure(); } }, 120); }
-
-		function goto(id) { if (!nodes[id]) { stage.innerHTML = '<p class="wpfinet-guide__error">' + esc(S.missing) + '</p>'; return; } current = id; history.push(id); moved = true; render(); }
+		function activeEl() { var last = stage.lastElementChild; return last && !last.classList.contains('wpfinet-guide__sizer') ? last : null; }
+		function setActive(html) { var tmp = document.createElement('div'); tmp.innerHTML = html; var el = tmp.firstChild, old = activeEl(); if (old) { stage.replaceChild(el, old); } else { stage.appendChild(el); } return el; }
+		function goto(id) { if (!nodes[id]) { setActive('<p class="wpfinet-guide__error">' + esc(S.missing) + '</p>'); return; } current = id; history.push(id); moved = true; render(); }
 		function back() { if (history.length > 1) { history.pop(); current = history[history.length - 1]; moved = true; tracker.track('back_clicked', { node_id: current }); render(); } }
 		function restart() { var modal = showModal(root, S.restart, '<p>' + esc(S.restartText) + '</p><p class="wpfinet-guide__modal-actions"><button type="button" class="wpfinet-guide__button" data-ok>' + esc(S.confirm) + '</button> <button type="button" class="wpfinet-guide__text-button" data-cancel>' + esc(S.cancel) + '</button></p>'); modal.el.querySelector('[data-ok]').addEventListener('click', function () { modal.close(); current = data.start_node; history = [current]; moved = true; tracker.track('restart_clicked', { node_id: current }); render(); }); modal.el.querySelector('[data-cancel]').addEventListener('click', modal.close); }
-		function wireForms(node) { stage.querySelectorAll('form').forEach(function (form) { var formId = node.wpforms && node.wpforms.form_id || 0, started = false; tracker.track('wpform_displayed', { node_id: node.id, form_id: formId }); form.addEventListener('input', function () { if (!started) { started = true; tracker.track('wpform_started', { node_id: node.id, form_id: formId }); } }); form.addEventListener('submit', function () { tracker.track('wpform_submitted', { node_id: node.id, form_id: formId }); }); }); }
-		function loadOutage(node) { var cfg = node.outage || {}, query = new URLSearchParams(); ['service', 'provider', 'area'].forEach(function (key) { if (cfg[key]) { query.set(key, cfg[key]); } }); if (!data.outages_endpoint) { return; } fetch(data.outages_endpoint + (query.toString() ? '?' + query.toString() : ''), { credentials: 'same-origin' }).then(function (response) { return response.ok ? response.json() : []; }).then(function (outages) { if (current !== node.id) { return; } var target = stage.querySelector('[data-outage-result]'); if (!target) { return; } if (outages.length) { tracker.track('outage_displayed', { node_id: node.id, outage_id: outages[0].id }); if (cfg.mode === 'branch' && cfg.match_node) { goto(cfg.match_node); return; } target.innerHTML = '<p><strong>' + esc(S.outageFound) + '</strong></p>' + outages.map(function (outage) { return '<article class="wpfinet-guide__outage"><strong>' + esc(outage.title) + '</strong><span>' + esc(outage.status) + '</span><p>' + esc(outage.summary || '') + '</p><a data-outage-link href="' + esc(safeHref(outage.url)) + '">' + esc(S.outageLink) + '</a></article>'; }).join(''); target.querySelectorAll('[data-outage-link]').forEach(function (link) { link.addEventListener('click', function () { tracker.track('outage_clicked', { node_id: node.id, outage_id: outages[0].id }); }); }); } else if (cfg.no_match_node) { goto(cfg.no_match_node); } else { target.textContent = S.outageNone; } }).catch(function () {}); }
+		function wireForms(node) { var active = activeEl(); if (!active) { return; } active.querySelectorAll('form').forEach(function (form) { var formId = node.wpforms && node.wpforms.form_id || 0, started = false; tracker.track('wpform_displayed', { node_id: node.id, form_id: formId }); form.addEventListener('input', function () { if (!started) { started = true; tracker.track('wpform_started', { node_id: node.id, form_id: formId }); } }); form.addEventListener('submit', function () { tracker.track('wpform_submitted', { node_id: node.id, form_id: formId }); }); }); }
+		function loadOutage(node) { var cfg = node.outage || {}, query = new URLSearchParams(); ['service', 'provider', 'area'].forEach(function (key) { if (cfg[key]) { query.set(key, cfg[key]); } }); if (!data.outages_endpoint) { return; } fetch(data.outages_endpoint + (query.toString() ? '?' + query.toString() : ''), { credentials: 'same-origin' }).then(function (response) { return response.ok ? response.json() : []; }).then(function (outages) { if (current !== node.id) { return; } var active = activeEl(), target = active && active.querySelector('[data-outage-result]'); if (!target) { return; } if (outages.length) { tracker.track('outage_displayed', { node_id: node.id, outage_id: outages[0].id }); if (cfg.mode === 'branch' && cfg.match_node) { goto(cfg.match_node); return; } target.innerHTML = '<p><strong>' + esc(S.outageFound) + '</strong></p>' + outages.map(function (outage) { return '<article class="wpfinet-guide__outage"><strong>' + esc(outage.title) + '</strong><span>' + esc(outage.status) + '</span><p>' + esc(outage.summary || '') + '</p><a data-outage-link href="' + esc(safeHref(outage.url)) + '">' + esc(S.outageLink) + '</a></article>'; }).join(''); target.querySelectorAll('[data-outage-link]').forEach(function (link) { link.addEventListener('click', function () { tracker.track('outage_clicked', { node_id: node.id, outage_id: outages[0].id }); }); }); } else if (cfg.no_match_node) { goto(cfg.no_match_node); } else { target.textContent = S.outageNone; } }).catch(function () {}); }
 
 		function render() {
 			var node = nodes[current]; if (!node) { return; }
@@ -122,8 +113,8 @@
 				progressEl.textContent = S.step + ' ' + history.length + (progressMode === 'bar' && left !== Infinity ? ' ' + S.of + ' ' + (history.length + left) : '');
 				if (bar) { var pct = left === Infinity ? 0 : Math.round(history.length / Math.max(1, history.length + left) * 100); bar.setAttribute('aria-valuenow', String(pct)); bar.firstChild.style.width = pct + '%'; bar.hidden = left === Infinity; }
 			}
-			stage.innerHTML = cardHTML(node, data, false);
-			var card = stage.firstChild;
+			var card;
+			if (adopt) { card = activeEl(); adopt = false; } else { card = setActive(cardHTML(node, data, false)); }
 			if (animate && moved && card) { card.classList.add('is-entering'); requestAnimationFrame(function () { requestAnimationFrame(function () { card.classList.remove('is-entering'); }); }); }
 			if (backBtn) { var first = history.length <= 1; backBtn.disabled = first; backBtn.classList.toggle('is-placeholder', first); backBtn.setAttribute('aria-hidden', first ? 'true' : 'false'); backBtn.tabIndex = first ? -1 : 0; }
 			if (debugEl) { debugEl.innerHTML = 'Current node: ' + esc(current) + '<br>Path: ' + esc(history.join(' → ')); }
@@ -131,25 +122,22 @@
 			if (history.length === 1) { tracker.track('guide_viewed', { node_id: node.id }); }
 			if (history.length === 2) { tracker.track('guide_started', { node_id: node.id }); }
 			if (node.type === 'result') { tracker.track('result_reached', { node_id: node.id }); tracker.track('guide_completed', { node_id: node.id }); }
-			stage.querySelectorAll('[data-next]').forEach(function (button) { button.addEventListener('click', function () { tracker.track('answer_selected', { node_id: node.id, option_id: button.dataset.next }); goto(button.dataset.next); }); });
+			card.querySelectorAll('[data-next]').forEach(function (button) { button.addEventListener('click', function () { tracker.track('answer_selected', { node_id: node.id, option_id: button.dataset.next }); goto(button.dataset.next); }); });
 			var image = node.image;
-			stage.querySelectorAll('[data-zoom]').forEach(function (el) { function open() { showModal(root, image.alt || node.heading || node.title, '<img src="' + esc(safeHref(image.url)) + '" alt="' + esc(image.alt || '') + '">'); } el.addEventListener('click', open); el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }); });
-			stage.querySelectorAll('[data-cta]').forEach(function (el) { el.addEventListener('click', function () { tracker.track('cta_clicked', { node_id: node.id, cta_type: el.dataset.cta }); }); });
-			stage.querySelectorAll('[data-cta-action]').forEach(function (el) { el.addEventListener('click', function () { tracker.track('cta_clicked', { node_id: node.id, cta_type: el.dataset.ctaAction }); if (el.dataset.ctaAction === 'restart') { restart(); } if (el.dataset.ctaAction === 'back') { back(); } }); });
-			stage.querySelectorAll('[data-cta-form]').forEach(function (el) { el.addEventListener('click', function () { var id = el.dataset.ctaForm, form = node.cta_forms && node.cta_forms[id] || ''; tracker.track('cta_clicked', { node_id: node.id, cta_type: 'wpforms' }); if (form) { showModal(root, el.textContent, form); } }); });
+			card.querySelectorAll('[data-zoom]').forEach(function (el) { function open() { showModal(root, image.alt || node.heading || node.title, '<img src="' + esc(safeHref(image.url)) + '" alt="' + esc(image.alt || '') + '">'); } el.addEventListener('click', open); el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }); });
+			card.querySelectorAll('[data-cta]').forEach(function (el) { el.addEventListener('click', function () { tracker.track('cta_clicked', { node_id: node.id, cta_type: el.dataset.cta }); }); });
+			card.querySelectorAll('[data-cta-action]').forEach(function (el) { el.addEventListener('click', function () { tracker.track('cta_clicked', { node_id: node.id, cta_type: el.dataset.ctaAction }); if (el.dataset.ctaAction === 'restart') { restart(); } if (el.dataset.ctaAction === 'back') { back(); } }); });
+			card.querySelectorAll('[data-cta-form]').forEach(function (el) { el.addEventListener('click', function () { var id = el.dataset.ctaForm, form = node.cta_forms && node.cta_forms[id] || ''; tracker.track('cta_clicked', { node_id: node.id, cta_type: 'wpforms' }); if (form) { showModal(root, el.textContent, form); } }); });
 			wireForms(node);
 			if (node.type === 'outage') { loadOutage(node); }
-			if (moved) { var h = stage.querySelector('.wpfinet-guide__heading'); if (h) { requestAnimationFrame(function () { h.focus({ preventScroll: true }); var r = shell.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * 0.6) { shell.scrollIntoView({ block: 'start', behavior: animate ? 'smooth' : 'auto' }); } }); } moved = false; }
+			if (moved) { var h = card.querySelector('.wpfinet-guide__heading'); if (h) { requestAnimationFrame(function () { h.focus({ preventScroll: true }); var r = shell.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * 0.6) { shell.scrollIntoView({ block: 'start', behavior: animate ? 'smooth' : 'auto' }); } }); } moved = false; }
 		}
 
 		if (backBtn) { backBtn.addEventListener('click', back); }
 		if (restartBtn) { restartBtn.addEventListener('click', restart); }
 		render();
-		measure();
-		if (document.fonts && document.fonts.ready) { document.fonts.ready.then(function () { lastWidth = 0; measure(); }); }
-		if (window.ResizeObserver) { new ResizeObserver(scheduleMeasure).observe(shell); } else { addEventListener('resize', scheduleMeasure); }
 		addEventListener('pagehide', function () { tracker.flush(true); });
-		return { go: goto, back: back, restart: restart, getPath: function () { return history.slice(); }, measure: function () { lastWidth = 0; measure(); } };
+		return { go: goto, back: back, restart: restart, getPath: function () { return history.slice(); }, measure: function () {} };
 	}
 	function init() { document.querySelectorAll('[data-finet-troubleshoot]').forEach(function (root) { var payload = root.querySelector('.finet-troubleshoot__data'); if (!payload) { return; } try { mount(root, JSON.parse(payload.textContent)); } catch (e) { root.textContent = S.missing; } }); }
 	window.FinetTroubleshootRuntime = { mount: mount, safeHref: safeHref }; if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }

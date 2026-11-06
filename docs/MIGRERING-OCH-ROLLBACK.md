@@ -1,4 +1,4 @@
-# Migrering och rollback: Finet Troubleshoot 2.0.1 / WPFINET 3.0.0 → WPFINET 3.1.0
+# Migrering och rollback: Finet Troubleshoot 2.0.1 / WPFINET 3.0.x / 3.1.0 → WPFINET 3.1.1
 
 3.1 (liksom 3.0) är en **uppgradering på plats** av samma plugin: katalog `finet-troubleshoot/`, fil `finet-troubleshoot.php` och textdomän `finet-troubleshoot`. Det blir inget parallellt plugin, och inga CPT:er, hooks eller REST-rutter registreras två gånger.
 
@@ -6,7 +6,11 @@ Migreringen är **additiv och idempotent**. Den ändrar inga post-ID, slugs, URL
 
 > **Bygg inte om i produktion.** Kör allt nedan på staging först. Fråga ansvarig innan något görs i produktion som inte går att ångra.
 
-## 0. Från 3.0.0 till 3.1.0 (dev.finet.se kör 3.0.0)
+## 0a. Från 3.1.0 till 3.1.1
+
+Ingen databasändring, bara databasversionen höjs. Ladda upp `finet-troubleshoot-3.1.1.zip` med **Ersätt nuvarande med uppladdad**, öppna wp-admin och **rensa Cloudflare-cachen för HTML**. Rollback: `wp option update finet_ts_db_version 3.1.0` och ladda upp 3.1.0-ZIP:en. Verifiering: se `docs/LEVERANS-CHATGPT-WORK.md`, avsnitt 0.
+
+## 0. Från 3.0.0 till 3.1.x
 
 1. Backup av databas och `wp-content/` (som i avsnitt 1). Spara `finet-troubleshoot-3.0.0.zip` för rollback.
 2. **Tillägg → Lägg till nytt → Ladda upp** `finet-troubleshoot-3.1.0.zip` → **Ersätt nuvarande med uppladdad**.

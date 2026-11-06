@@ -20,7 +20,7 @@ final class PlatformTest extends TestCase {
 		$this->assertTrue( MigrationManager::needs_migration() );
 		$first  = ( new MigrationManager() )->run();
 		$second = ( new MigrationManager() )->run();
-		$this->assertSame( '3.1.0', get_option( 'finet_ts_db_version' ) );
+		$this->assertSame( \FinetTroubleshoot\Core\MigrationManager::VERSION, get_option( 'finet_ts_db_version' ) );
 		$this->assertFalse( MigrationManager::needs_migration() );
 		$this->assertSame( $counts, MigrationManager::counts() );
 		$this->assertSame( $nodes, get_post_meta( $id, '_finet_ts_nodes', true ) );
@@ -36,7 +36,7 @@ final class PlatformTest extends TestCase {
 		$after = get_posts( array( 'post_type' => 'finet_ts_guide', 'post_status' => array( 'publish', 'draft' ), 'fields' => 'ids', 'posts_per_page' => -1 ) );
 		foreach ( $guides as $g ) { wp_untrash_post( $g ); }
 		$this->assertSame( array(), $after, 'demo guide must not be recreated on reactivation/upgrade' );
-		$this->assertSame( '3.1.0', get_option( 'finet_ts_db_version' ) );
+		$this->assertSame( \FinetTroubleshoot\Core\MigrationManager::VERSION, get_option( 'finet_ts_db_version' ) );
 	}
 
 	public function test_consent_wp_consent_api_without_cmp_is_not_consent(): void {

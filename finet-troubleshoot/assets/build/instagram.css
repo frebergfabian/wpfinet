@@ -7,8 +7,10 @@
 .wpfinet-instagram__link img{display:block;width:100%;height:100%;object-fit:cover}
 .wpfinet-instagram__link:focus-visible{outline:3px solid #f47c20;outline-offset:2px}
 .wpfinet-instagram__badge{position:absolute;top:8px;right:8px;padding:2px 8px;border-radius:99px;background:rgb(0 0 0 / 65%);color:#fff;font-size:.75em;font-weight:600}
-.wpfinet-instagram__meta{margin-top:.5rem;font-size:.9em}
-.wpfinet-instagram__meta time{display:block;opacity:.75}
-.wpfinet-instagram__meta p{margin:.25rem 0 0}
+.wpfinet-instagram__meta{margin-top:.5rem;font-size:.9em;line-height:1.45}
+.wpfinet-instagram__meta time{display:block;height:1.45em;opacity:.75;overflow:hidden}
+/* 3.1.1 (CLS): fixed caption box (3 lines) – emoji replacement and web-font swaps cannot change the height. */
+.wpfinet-instagram__meta p{display:-webkit-box;height:4.35em;margin:.25rem 0 0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow-wrap:break-word}
+.wpfinet-instagram__meta img.emoji{width:1em!important;height:1em!important;vertical-align:-.1em}
 .wpfinet-instagram__more,.wpfinet-instagram__fallback{margin-top:1rem}
 @media(max-width:600px){.wpfinet-instagram__list{grid-template-columns:repeat(2,minmax(0,1fr))}.wpfinet-instagram--list .wpfinet-instagram__item{grid-template-columns:1fr}}

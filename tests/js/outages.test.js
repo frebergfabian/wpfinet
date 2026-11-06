@@ -24,7 +24,16 @@ test('a dismissed banner stays hidden; a new version is shown', async () => {
 	assert.equal(w2.document.querySelector('[data-wpfinet-banner]').hidden, false);
 });
 
-test('footer fallback is moved to the top of <body>', async () => {
+test('footer fallback stays where it is (fixed to the bottom) and reserves space at the end of <body>', async () => {
 	const w = await load('<header>Sidhuvud</header><main>x</main>' + banner('data-wpfinet-banner-fallback'));
-	assert.equal(w.document.body.firstElementChild.hasAttribute('data-wpfinet-banner'), true);
+	assert.equal(w.document.body.firstElementChild.tagName, 'HEADER', 'nothing is inserted above the page content');
+	assert.equal(w.document.body.lastElementChild.className, 'wpfinet-banner-spacer');
+	w.document.querySelector('[data-wpfinet-banner-close]').click();
+	assert.equal(w.document.body.lastElementChild.style.height, '0px');
+});
+
+test('the <head> class hides a dismissed banner without reading storage again', async () => {
+	const dom = new JSDOM(`<!doctype html><html class="wpfinet-banner-dismissed"><body>${banner()}</body></html>`, { runScripts: 'outside-only', url: 'https://example.test/' });
+	await new Promise((r) => dom.window.addEventListener('load', r)); dom.window.eval(source);
+	assert.equal(dom.window.document.querySelector('[data-wpfinet-banner]').hidden, true);
 });

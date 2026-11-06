@@ -24,8 +24,8 @@ final class AccessModule {
 	}
 
 	public function init(): void {
-		wp_register_style( 'wpfinet-access', FINET_TS_URL . 'assets/build/access.css', array(), FINET_TS_VERSION );
-		wp_register_script( 'wpfinet-access', FINET_TS_URL . 'assets/build/access.js', array(), FINET_TS_VERSION, array( 'in_footer' => true, 'strategy' => 'defer' ) );
+		wp_register_style( 'wpfinet-access', FINET_TS_URL . 'assets/build/access.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'access.css' ) );
+		wp_register_script( 'wpfinet-access', FINET_TS_URL . 'assets/build/access.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'access.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
 		self::ensure_schedule();
 	}
 

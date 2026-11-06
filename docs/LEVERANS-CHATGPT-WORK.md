@@ -1,6 +1,6 @@
-# WPFINET 3.1.0 – överlämning till ChatGPT Work
+# WPFINET 3.1.1 – överlämning till ChatGPT Work
 
-Instruktion för att installera och konfigurera WPFINET 3.1.0 på **dev.finet.se**. Följ stegen i ordning. Allt som kräver ett beslut eller uppgifter som bara Finet har är markerat **MANUELLT**.
+Instruktion för att installera och konfigurera WPFINET 3.1.1 på **dev.finet.se**. Följ stegen i ordning. Allt som kräver ett beslut eller uppgifter som bara Finet har är markerat **MANUELLT**.
 
 > **Inte ditt uppdrag här:** sidorna *Sponsring* och *Jobba hos oss* byggs separat och påverkas inte av pluginet.
 >
@@ -8,39 +8,61 @@ Instruktion för att installera och konfigurera WPFINET 3.1.0 på **dev.finet.se
 
 ---
 
+## 0. Nytt i 3.1.1 (rättning av 3.1.0)
+
+3.1.1 rättar två fel som syntes på dev.finet.se efter 3.1.0. Ingenting ska konfigureras om.
+
+1. **Felsökningsguiden krympte till en smal kolumn** på `/guide/`, och rubriker och knapptexter bröts bokstav för bokstav.
+   - Orsak: guiden hade CSS-containment (`container-type: inline-size`) och ingen egen bredd. I en Elementor-container som anpassar bredden efter innehållet (`align-items: flex-start`) blev den därför 0 px bred.
+   - Nu fyller guiden sin kolumn upp till 760 px, texten bryts mellan ord och höjden är densamma i alla steg.
+   - Första steget renderas på servern, så sidan under guiden flyttas inte när sidan laddas.
+2. **Driftbannern orsakade layoutförskjutning (CLS)**: bannerns CSS laddades i sidfoten.
+   - Lighthouse på uppspelade dev.finet.se: CLS **1,00–1,13 före**, **0–0,003 efter**.
+   - Nu laddas CSS:en i `<head>`, en stängd banner döljs innan sidan ritas och knapparna har fasta mått.
+
+Fixa **inte** detta med CSS på Elementor-sidorna. Ta bort eventuella tillfälliga CSS-regler som lagts till för guiden eller bannern efter 3.1.0 (Elementor → Webbplatsinställningar → Anpassad CSS, eller sidans egen CSS).
+
+**Verifiera efter installationen (M11):**
+- `/guide/` och `/felsokningsguide/` i Chrome på 1440 px och i mobilläge 375 px: guiden ska vara 760 px bred på desktop och fylla kolumnen på mobil. Rubriker ska brytas normalt.
+- Klicka igenom några steg: texten under guiden ("Frågor och svar") ska inte flytta sig.
+- Kör Lighthouse (DevTools → Lighthouse → Performance) på startsidan och `/guide/` med aktiv driftbanner. CLS ska vara under 0,1, normalt nära 0.
+- Stäng bannern och ladda om sidan. Bannern ska vara borta direkt, utan att sidan hoppar.
+
+---
+
 ## 1. Installationspaket
 
 | | |
 |---|---|
-| Fil | `finet-troubleshoot-3.1.0.zip` (240 kB, 136 filer) |
-| SHA-256 | `4ceee021ca4a4c56281e6903bb79228243028e7ff13c623742ffbd81d57a245c` |
+| Fil | `finet-troubleshoot-3.1.1.zip` (252 kB, 139 filer) |
+| SHA-256 | `da92516b60c2e080c1370d21c91815c26af026ab21a771d5ef972e484dfc23fd` |
 | Pluginidentitet | `finet-troubleshoot/finet-troubleshoot.php` (samma som 2.0.1 och 3.0.0) |
 | Krav | WordPress 6.5+ (testat 7.1.4), PHP 8.1+ (testat 8.3; produktion kör 8.5), PHP-tilläggen `mbstring`, `openssl` eller `sodium`, `intl` rekommenderas |
 | Byggs inte på servern | Färdigbyggda CSS/JS ingår. Node behövs inte. |
 
 ## 2. Uppgradering från tidigare version
 
-dev.finet.se kör i dag **3.0.0**. Uppgraderingen tar bort inga data och ändrar inga ID, slugs eller URL:er.
+dev.finet.se kör i dag **3.1.0**. Samma steg gäller från 3.0.0 och 2.0.1. Uppgraderingen tar bort inga data och ändrar inga ID, slugs eller URL:er.
 
-1. **Backup:** databas och `wp-content/`. Spara den nuvarande `finet-troubleshoot-3.0.0.zip` för rollback.
+1. **Backup:** databas och `wp-content/`. Spara den nuvarande ZIP:en (`finet-troubleshoot-3.1.0.zip`) för rollback.
 2. Kontrollera **WPFinet → Inställningar → Avancerat → "Radera data vid avinstallation" = av**.
-3. **Tillägg → Lägg till nytt → Ladda upp tillägg** → välj `finet-troubleshoot-3.1.0.zip` → **Ersätt nuvarande med uppladdad**. Pluginet förblir aktivt.
+3. **Tillägg → Lägg till nytt → Ladda upp tillägg** → välj `finet-troubleshoot-3.1.1.zip` → **Ersätt nuvarande med uppladdad**. Pluginet förblir aktivt.
 4. Öppna valfri sida i wp-admin som administratör. Migreringen körs då automatiskt (eller `wp wpfinet migrate`).
-5. **WPFinet → Diagnos**: databasversionen ska vara **3.1.0** och migreringsloggen ska sluta med "slutförd utan borttagningar".
-6. Rensa Cloudflare-cachen för HTML.
+5. **WPFinet → Diagnos**: databasversionen ska vara **3.1.1** och migreringsloggen ska sluta med "slutförd utan borttagningar".
+6. Rensa Cloudflare-cachen för HTML (**Purge Everything** eller åtminstone alla HTML-sidor). Gammal cachad HTML pekar på 3.1.0-filerna och visar då det gamla felet. CSS/JS har nya URL:er (`?ver=3.1.1.<tid>`) och blandas aldrig med gamla.
 7. Kontrollera att följande ger HTTP 200 och ser rätt ut: startsidan, `/felsokningsguide/`, `/guide/`, `/drift/`, `/driftstorningar/` och en enskild driftstörning.
 
-Vad migreringen gör: lägger till kolumnen `street_fold` i tabellen `{prefix}wpfinet_access_index` och fyller den för befintliga rader. Inget annat ändras.
+Vad migreringen gör: från 3.1.0 ändras ingenting i databasen utom versionsnumret. Från 3.0.0 läggs dessutom kolumnen `street_fold` till i `{prefix}wpfinet_access_index` och fylls för befintliga rader.
 
 Från **2.0.1** är stegen desamma (se `docs/MIGRERING-OCH-ROLLBACK.md`). Moduler som var avstängda förblir avstängda.
 
-**Rollback till 3.0.0:**
+**Rollback till 3.1.0:**
 
 ```bash
-wp option update finet_ts_db_version 3.0.0
+wp option update finet_ts_db_version 3.1.0
 ```
 
-Ladda sedan upp 3.0.0-ZIP:en med **Ersätt nuvarande med uppladdad**. För 2.0.1 sätter du `2.0.0` i stället. Avinstallera aldrig pluginet som rollback.
+Ladda sedan upp 3.1.0-ZIP:en med **Ersätt nuvarande med uppladdad**. Till 3.0.0 sätter du `3.0.0`, till 2.0.1 sätter du `2.0.0`. Avinstallera aldrig pluginet som rollback.
 
 ## 3. Konfiguration per modul
 
@@ -50,16 +72,18 @@ Alla inställningar finns under menyn **WPFinet** i wp-admin. Moduler slås på 
 
 Inget behöver konfigureras. Befintliga guider, shortcodes och statistik fungerar som förut och får automatiskt det nya utseendet.
 
-- Utseendet följer Finets tema: Montserrat/Poppins från Elementor, indigo `#24216c` och orange `#fd9800`.
+- Utseendet följer Finets tema: brödtext och knappar ärver sajtens typsnitt (Montserrat), rubriker använder temats rubriktypsnitt (Poppins), indigo `#24216c` och orange `#fd9800`.
+- Bredd: guiden fyller sin kolumn upp till **760 px** (*Utseende → Maxbredd*). Det fungerar oavsett hur Elementor-containern är inställd (start, mitten, rad, grid).
 - **WPFinet → Inställningar → Utseende**: värden som någon själv har ändrat gäller fortfarande. 2.x-standardvärden (blå `#005baa` m.fl.) skriver inte över den nya stilen. Ändra inga värden här om ni vill behålla Finet-stilen.
-- Ytan reserverar höjden för guidens högsta steg, så att innehåll under guiden inte hoppar mellan stegen.
+- Ytan reserverar höjden för guidens högsta steg, så att innehåll under guiden inte hoppar mellan stegen. På mobil reserveras högst 80 % av skärmhöjden, så att knapparna syns. Bara ett steg som är längre än så gör guiden högre (i den riktiga guiden gäller det 1 av 31 steg, "bypass-router").
+- Lägg guiden i en vanlig Elementor-**Shortcode**-widget. Ingen extra CSS behövs.
 
 ### 3.2 Driftbanner och driftstörningar
 
 1. **WPFinet → Inställningar → Driftstörningar**:
    - **Visa driftbanner**: på.
    - **Statussida URL**: `https://dev.finet.se/drift/`. Det är sidan som bannerns "+N till" och `[wpfinet_outage_status]` länkar till. Lämnas fältet tomt används `/driftstorningar/` som förut.
-2. Bannern visas automatiskt överst på alla sidor när det finns en aktuell driftstörning som är akut eller har "Visa i global driftbanner" ikryssat.
+2. Bannern visas automatiskt överst på alla sidor (Astra har `wp_body_open`). I teman utan `wp_body_open` visas den i stället fast längst ned i fönstret. när det finns en aktuell driftstörning som är akut eller har "Visa i global driftbanner" ikryssat.
 3. Stängknappen döljer bannern för resten av besökarens session. Kommer det en ny eller ändrad driftstörning visas bannern igen.
 
 ### 3.3 Instagram
@@ -227,27 +251,43 @@ Ordningen är viktig: slå på det nya, verifiera, ta bort referenserna, och ina
 | M8 | Om dev kör med `DISABLE_WP_CRON`: Windows Schemaläggaren var 15:e minut: `php.exe C:\wp-cli\wp-cli.phar --path=C:\inetpub\wwwroot wpfinet jobs run` (se `docs/DRIFT-IIS-CLOUDFLARE.md`) | Drift |
 | M9 | Cloudflare: undanta `/wp-json/wpfinet/v1/access/check` från cache. Gärna även en rate-limit-regel (30/min per IP). Rensa HTML-cachen efter uppgradering. | Drift |
 | M10 | Verifiera på riktig IIS/PHP 8.5/MySQL: guidesida, driftbanner (stäng), adressökning, Instagramflöde | ChatGPT Work |
+| M11 | Efter 3.1.1: rensa Cloudflare-cachen, ta bort tillfällig CSS för guide/banner, verifiera bredd/höjd/CLS enligt avsnitt 0 | ChatGPT Work |
 
 ## 9. Testresultat och kända begränsningar
 
-Körda i testmiljön: WordPress 7.1.4, PHP 8.3, SQLite, Chromium/Playwright, 2026-11-05.
+Körda 2026-11-06 i testmiljön (WordPress 7.1.4, PHP 8.3, SQLite, Chromium/Playwright, Lighthouse 12.6.1) och mot en **offline-uppspelning av de riktiga sidorna från dev.finet.se**. Uppspelningen innehåller Elementor 4.3.6 och Astra 4.14.2 med sajtens CSS och typsnitt, och pluginets aktuella kod renderar guide, banner och `<head>` (`tests/e2e/elementor/`).
 
 | Test | Resultat |
 |---|---|
 | PHP-syntax, alla filer | OK |
-| PHPUnit (kontrakt mot 2.0.1, enhet, integration) | **102 tester, 721 kontroller, 0 fel** |
-| JS-enhetstester (guide, banner) | 7/7 |
+| PHPUnit (kontrakt mot 2.0.1, enhet, integration) | **110 tester, 759 kontroller, 0 fel** |
+| JS-enhetstester, bl.a. att serverns guide-markup är identisk med runtime-JS:ens (riktiga dev-guiden + demoguide med alla stegtyper) | 15/15 |
+| **Elementor-uppspelning** `/guide/`, `/felsokningsguide/`, demoguide (korta och långa steg, alla knapptyper) och startsidan vid 1920, 1440, 1280, 390 och 375 px. Kontrollerar bredd, ordbrytning, klippning, knappstorlek, temastilar, höjd och innehåll under guiden i **alla 31 steg**, samt CLS med banner, efter stängning och i reservläget (tom cache vid varje sidladdning). | **329/329** |
+| Guidens bredd i nio containertyper (block, flex start/mitten/rad, rad med syskon, grid, inline-block, float, tabellcell) vid 5 bredder | 140/140 |
 | Webbläsare: guide, banner (stäng/kom ihåg), driftsidor, adressökning, Instagram, admin | 29/29 |
 | Samtycke: blockering före val, neka/acceptera/återkalla, statistik bara med samtycke | 21/21 |
-| Guidens stabilitet (demo och den riktiga 31-nodsguiden från dev.finet.se), desktop + mobil | 22/22 + 22/22 |
+| Guidens stabilitet, lokal testsajt (demo och riktiga guiden), desktop + mobil | 22/22 + 22/22 |
 | UI-granskning, 69 vyer (admin + publikt, 1280 och 390 px) | 0 vyer med fel |
-| Uppgradering 2.0.1 → 3.1.0 med riktiga ZIP:ar, inkl. rollback | 26/26 |
-| Uppgradering 3.0.0 → 3.1.0 inkl. adressindex, hemligheter, egna texter, rollback | 40/40 |
-| Prestanda: 0 utgående anrop vid sidrendering, även när externa API:er hänger; TTFB 25–90 ms | OK |
-| WPCS-säkerhetsregler (escaping, nonce, prepared SQL) | Bara kända falsklarm: nonce kontrolleras i gemensam `guard()`, tabellnamn från `$wpdb->prefix` |
+| Uppgradering med riktiga ZIP:ar inkl. rollback: 2.0.1 → 3.1.1 / 3.0.0 → 3.1.1 / 3.1.0 → 3.1.1 | 26/26 · 40/40 · 40/40 |
+| Prestanda: 0 utgående anrop vid sidrendering, TTFB 25–90 ms | OK |
+| WPCS-säkerhetsregler på nya/ändrade filer | Inga anmärkningar |
+
+**Lighthouse (Performance), uppspelade dev.finet.se, aktiv driftbanner:**
+
+| Sida | Mobil CLS före → efter | Desktop CLS före → efter | Desktop-poäng före → efter |
+|---|---|---|---|
+| Startsidan | 1,13 → **0** | 1,00 → **0,003** | 0,59 → 0,84 |
+| `/guide/` | 0,73 → **0** | 1,13 → **0,002** | 0,63 → 0,87 |
+| `/felsokningsguide/` | 1,02 → **0** | 1,02 → **0,002** | 0,66 → 0,90 |
+
+Den lilla rest som finns på desktop kommer från Elementors sidhuvud, inte från WPFINET. Värdena gäller uppspelningen. Den riktiga mätningen på dev.finet.se (M11) kan skilja sig något beroende på nätverk och cache. Den mätning på dev.finet.se som visade CLS 0,065 hade samma orsak, bannerns CSS i sidfoten. Hur stort skiftet blir beror på hur snabbt CSS:en hinner laddas.
 
 Kända begränsningar:
 
+0. **3.1.1-rättningarna är inte installerade på dev.finet.se än.** De är verifierade mot en offline-uppspelning av sajten (riktig HTML, Elementor, Astra, CSS och typsnitt) men inte mot sajten live. Gör M11 efter installationen.
+   - Webbtypsnitt som byts in under laddningen kan fortfarande flytta guiden några pixlar, eftersom det högsta stegets radbrytning ändras (CLS 0,002–0,005 i mätningen). Bannern påverkas inte: den använder systemtypsnitt.
+   - Bannern har därför systemtypsnittet i stället för Montserrat. Vill ni ha Montserrat, sätt `--wpfinet-banner-font` i temats CSS. Det kan då ge ett litet typsnittsskift igen.
+   - Instagramflödets bildtexter visas med högst 3 rader. De kortas redan till "Max tecken i bildtext".
 1. **Meta-API:t är inte verifierat mot ett riktigt konto.** Metas dokumentation och API:er var inte nåbara från testmiljön. Anropen följer Metas dokumenterade modeller och är testade med simulerade svar. Verifiera med **Testa anslutning** (M2). API-version kan sättas under Instagram → Inställningar om Meta kräver det.
 2. **access.finet.se svarade inte** från testmiljön (anslutningen återställdes, troligen IP-begränsning). Endpoint-sökväg, autentisering och verkligt svarsformat är därför inte verifierade. Fältmappningen följer den gamla lösningen. WPGetAPI-vägen (steg A) undviker problemet eftersom den använder den fungerande konfigurationen.
 3. **WPGetAPI:s funktion** `wpgetapi_endpoint()` är testad med en ersättare som har samma signatur. Om WPGetAPI har cache påslagen för endpointen kan indexet bli lika gammalt som den cachen.

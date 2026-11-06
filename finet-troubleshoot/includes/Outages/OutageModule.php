@@ -15,7 +15,7 @@ final class OutageModule {
 	public function register_hooks(): void {
 		add_action( 'init', array( $this, 'register' ) ); add_action( 'add_meta_boxes_' . self::POST_TYPE, array( $this, 'boxes' ) ); add_action( 'save_post_' . self::POST_TYPE, array( $this, 'save' ), 10, 2 );
 		add_filter( 'post_type_link', array( $this, 'permalink' ), 10, 2 ); add_filter( 'rewrite_rules_array', array( $this, 'rewrite_rules' ) );
-		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) ); add_shortcode( 'wpfinet_outages', array( $this, 'shortcode' ) ); add_shortcode( 'wpfinet_outage_status', array( $this, 'status_shortcode' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) ); add_action( 'wp_enqueue_scripts', array( $this, 'head_assets' ), 20 ); add_shortcode( 'wpfinet_outages', array( $this, 'shortcode' ) ); add_shortcode( 'wpfinet_outage_status', array( $this, 'status_shortcode' ) );
 		add_filter( 'the_content', array( $this, 'single_content' ) ); add_action( 'wp_body_open', array( $this, 'banner' ) ); add_action( 'wp_footer', array( $this, 'banner_fallback' ) );
 		add_action( 'save_post_' . self::POST_TYPE, array( $this, 'flush' ), 20 ); add_action( 'deleted_post', array( $this, 'flush' ) ); add_action( 'rest_api_init', array( $this, 'routes' ) );
 	}
@@ -49,7 +49,7 @@ final class OutageModule {
 	public function status_label( string $status ): string { return $this->statuses()[ $status ] ?? $status; }
 	public function permalink( string $url, \WP_Post $post ): string { if ( self::POST_TYPE !== $post->post_type ) { return $url; } return home_url( user_trailingslashit( 'driftstorningar/' . mysql2date( 'Y/m/d', $post->post_date ) . '/' . $post->post_name ) ); }
 	/** @return array<string,string> */ public function rewrite_rules( array $rules ): array { return array( '^driftstorningar/([0-9]{4})/([0-9]{2})/([0-9]{2})/([^/]+)/?$' => 'index.php?post_type=' . self::POST_TYPE . '&name=$matches[4]' ) + $rules; }
-	public function assets(): void { wp_register_style( 'wpfinet-outages', FINET_TS_URL . 'assets/build/outages.css', array(), FINET_TS_VERSION ); wp_register_script( 'wpfinet-outages', FINET_TS_URL . 'assets/build/outages.js', array(), FINET_TS_VERSION, true ); }
+	public function assets(): void { wp_register_style( 'wpfinet-outages', FINET_TS_URL . 'assets/build/outages.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'outages.css' ) ); wp_register_script( 'wpfinet-outages', FINET_TS_URL . 'assets/build/outages.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'outages.js' ), true ); }
 	public function shortcode( array $attributes ): string { $atts = shortcode_atts( array( 'status' => 'all', 'service' => '', 'provider' => '', 'area' => '', 'limit' => 10, 'filters' => 'false' ), $attributes, 'wpfinet_outages' ); $filters = array_filter( array( 'service' => sanitize_title( $atts['service'] ), 'provider' => sanitize_title( $atts['provider'] ), 'area' => sanitize_title( $atts['area'] ) ) ); $buckets = 'all' === $atts['status'] ? array( 'current', 'upcoming', 'past' ) : array( in_array( $atts['status'], array( 'current', 'upcoming', 'past' ), true ) ? $atts['status'] : 'current' ); $this->enqueue_assets(); ob_start(); echo '<section class="wpfinet-outages" data-wpfinet-outages>'; foreach ( $buckets as $bucket ) { $this->render_bucket( $bucket, $filters, absint( $atts['limit'] ) ?: 10 ); } echo '</section>'; return (string) ob_get_clean(); }
 	/** Outage list page: "Statussida URL" (Inställningar → Driftstörningar; unused before 3.1) or the CPT archive. */
 	public static function list_url(): string {
@@ -60,32 +60,88 @@ final class OutageModule {
 	public function render_bucket( string $bucket, array $filters, int $limit ): void { $labels = array( 'current' => __( 'Nuvarande driftstörningar', 'finet-troubleshoot' ), 'upcoming' => __( 'Kommande driftstörningar', 'finet-troubleshoot' ), 'past' => __( 'Tidigare driftstörningar', 'finet-troubleshoot' ) ); $outages = ( new OutageRepository() )->find( $bucket, $filters, $limit ); echo '<section class="wpfinet-outages__section"><h2>' . esc_html( $labels[ $bucket ] ) . '</h2>'; if ( ! $outages ) { echo '<p class="wpfinet-outages__empty">' . esc_html( 'current' === $bucket ? __( 'Inga aktuella driftstörningar.', 'finet-troubleshoot' ) : ( 'upcoming' === $bucket ? __( 'Inga planerade driftarbeten.', 'finet-troubleshoot' ) : __( 'Inga tidigare driftstörningar.', 'finet-troubleshoot' ) ) ) . '</p>'; } else { echo '<div class="wpfinet-outages__grid">'; foreach ( $outages as $post ) { $this->card( $post ); } echo '</div>'; } echo '</section>'; }
 	private function card( \WP_Post $post ): void { $data = ( new OutageRepository() )->public_data( $post, false ); echo '<article class="wpfinet-outage-card"><p><span class="wpfinet-badge">' . esc_html( 'acute' === $data['type'] ? __( 'Akut', 'finet-troubleshoot' ) : __( 'Planerat', 'finet-troubleshoot' ) ) . '</span> <span class="wpfinet-badge wpfinet-badge--status">' . esc_html( $this->status_label( (string) $data['status'] ) ) . '</span></p><h3><a href="' . esc_url( $data['url'] ) . '">' . esc_html( $data['title'] ) . '</a></h3><p>' . esc_html( $data['summary'] ) . '</p><p class="wpfinet-outage-card__meta">' . esc_html( implode( ' • ', $data['services'] ) ) . '<br>' . esc_html( implode( ', ', $data['providers'] ) ) . '</p><p>' . esc_html( sprintf( __( 'Start: %s', 'finet-troubleshoot' ), $this->format_time( (string) $data['start'] ) ) ) . '</p><a class="wpfinet-outage-card__link" href="' . esc_url( $data['url'] ) . '">' . esc_html__( 'Läs mer', 'finet-troubleshoot' ) . '</a></article>'; }
 	public function single_content( string $content ): string { static $rendering = false; if ( $rendering || ! is_singular( self::POST_TYPE ) || ! in_the_loop() || ! is_main_query() ) { return $content; } $post = get_post(); if ( ! $post instanceof \WP_Post || self::POST_TYPE !== $post->post_type ) { return $content; } $rendering = true; $data = ( new OutageRepository() )->public_data( $post, false ); $rendering = false; /* 3.0 (B25): 2.0.1 requested the filtered content here, re-entering this filter forever (HTTP 500 after max_execution_time). */ ob_start(); echo '<section class="wpfinet-outage-detail"><p><span class="wpfinet-badge">' . esc_html( $this->status_label( (string) $data['status'] ) ) . '</span></p><dl><dt>' . esc_html__( 'Start', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $this->format_time( (string) $data['start'] ) ) . '</dd><dt>' . esc_html__( 'Beräknad sluttid', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $data['estimated_end'] ? $this->format_time( (string) $data['estimated_end'] ) : __( 'Okänd', 'finet-troubleshoot' ) ) . '</dd><dt>' . esc_html__( 'Tjänsteleverantör', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( implode( ', ', $data['providers'] ) ?: '–' ) . '</dd><dt>' . esc_html__( 'Berör', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( implode( ', ', $data['services'] ) ?: '–' ) . '</dd><dt>' . esc_html__( 'Område', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( implode( ', ', $data['areas'] ) ?: '–' ) . ( $data['area_note'] ? '<br>' . esc_html( (string) $data['area_note'] ) : '' ) . '</dd></dl>'; if ( $data['estimated_end'] && strtotime( (string) $data['estimated_end'] ) < current_time( 'timestamp' ) && ! in_array( $data['status'], array( 'resolved', 'cancelled' ), true ) ) { echo '<p class="wpfinet-outage-detail__warning">' . esc_html__( 'Beräknad sluttid har passerat. Se senaste statusuppdatering för aktuell information.', 'finet-troubleshoot' ) . '</p>'; } echo '<h2>' . esc_html__( 'Senaste uppdateringar', 'finet-troubleshoot' ) . '</h2><ol class="wpfinet-timeline">'; foreach ( $data['timeline'] as $item ) { echo '<li><time>' . esc_html( $this->format_time( (string) $item['time'] ) ) . '</time><strong>' . esc_html( $this->status_label( (string) $item['status'] ) ) . '</strong><p>' . esc_html( (string) $item['text'] ) . '</p></li>'; } echo '</ol></section>'; return (string) ob_get_clean() . $content; }
+	/** @var array<string,mixed> */
+	private array $banner_cache = array();
+	public function reset_banner(): void { $this->banner_cache = array(); }
+
+	/**
+	 * Banner data for this request, computed once (also during wp_enqueue_scripts, so CSS and the dismissed state are
+	 * in <head> before the banner is painted). Null when no banner should be shown.
+	 *
+	 * @return array{type:string,status:string,title:string,url:string,version:string,more:int,list_url:string}|null
+	 */
+	public function banner_data(): ?array {
+		// Per request; reset_banner() clears it (outage saved, tests).
+		$cache = &$this->banner_cache;
+		if ( array_key_exists( 'data', $cache ) ) { return $cache['data']; }
+		$cache['data'] = null;
+		if ( is_admin() ) { return null; }
+		$settings = array_replace_recursive( \FinetTroubleshoot\Activator::default_settings(), (array) get_option( 'finet_ts_settings', array() ) );
+		if ( empty( $settings['outages']['banner_enabled'] ) ) { return null; }
+		$outages = array_values( array_filter( ( new OutageRepository() )->find( 'current', array(), 5 ), static fn ( \WP_Post $post ): bool => '1' === get_post_meta( $post->ID, self::META_BANNER, true ) || 'acute' === get_post_meta( $post->ID, self::META_TYPE, true ) ) );
+		if ( ! $outages ) { return null; }
+		$first = $outages[0];
+		$cache['data'] = array(
+			'type'     => 'planned' === get_post_meta( $first->ID, self::META_TYPE, true ) ? 'planned' : 'acute',
+			'status'   => $this->status_label( (string) get_post_meta( $first->ID, self::META_STATUS, true ) ),
+			'title'    => $first->post_title,
+			'url'      => (string) get_permalink( $first ),
+			'version'  => md5( implode( ',', array_map( static fn ( \WP_Post $post ): string => $post->ID . ':' . $post->post_modified_gmt, $outages ) ) ),
+			'more'     => count( $outages ) - 1,
+			'list_url' => self::list_url(),
+		);
+		return $cache['data'];
+	}
+
+	/**
+	 * 3.1.1 (CLS): when a banner will be shown, its stylesheet is enqueued during wp_enqueue_scripts so it is printed in
+	 * <head>, and a tiny head script marks a banner the visitor already closed in this session before anything is
+	 * painted. Earlier versions enqueued the CSS while rendering the body (printed in the footer) and hid dismissed
+	 * banners only after load, so the whole page moved.
+	 */
+	public function head_assets(): void {
+		$data = $this->banner_data();
+		if ( ! $data ) { return; }
+		$this->enqueue_assets();
+		wp_register_script( 'wpfinet-banner-state', false, array(), FINET_TS_VERSION, false );
+		wp_enqueue_script( 'wpfinet-banner-state' );
+		wp_add_inline_script( 'wpfinet-banner-state', self::state_script( $data['version'] ) );
+	}
+
+	public static function state_script( string $version ): string {
+		return '(function(){try{if(sessionStorage.getItem(' . wp_json_encode( 'wpfinet_banner_dismissed_' . preg_replace( '/[^a-f0-9]/', '', $version ) ) . ')){document.documentElement.classList.add("wpfinet-banner-dismissed");}}catch(e){}}());';
+	}
+
 	public function banner(): void { $this->render_banner( false ); } public function banner_fallback(): void { $this->render_banner( true ); }
 	private function render_banner( bool $fallback ): void {
 		static $shown = false;
-		if ( $shown || ( $fallback && did_action( 'wp_body_open' ) ) || is_admin() ) { return; }
-		$settings = array_replace_recursive( \FinetTroubleshoot\Activator::default_settings(), (array) get_option( 'finet_ts_settings', array() ) );
-		if ( empty( $settings['outages']['banner_enabled'] ) ) { return; }
-		$outages = array_values( array_filter( ( new OutageRepository() )->find( 'current', array(), 5 ), static fn ( \WP_Post $post ): bool => '1' === get_post_meta( $post->ID, self::META_BANNER, true ) || 'acute' === get_post_meta( $post->ID, self::META_TYPE, true ) ) );
-		if ( ! $outages ) { return; }
-		$shown   = true;
-		$first   = $outages[0];
-		$type    = 'planned' === get_post_meta( $first->ID, self::META_TYPE, true ) ? 'planned' : 'acute';
-		$status  = $this->status_label( (string) get_post_meta( $first->ID, self::META_STATUS, true ) );
-		$version = md5( implode( ',', array_map( static fn ( \WP_Post $post ): string => $post->ID . ':' . $post->post_modified_gmt, $outages ) ) );
-		$more    = count( $outages ) - 1;
-		$this->enqueue_assets();
-		// 3.1: region with a label (not a live region), close button that actually hides the banner, fallback moved to the
-		// top of <body> by outages.js when the theme lacks wp_body_open.
-		echo '<aside class="wpfinet-banner wpfinet-banner--' . esc_attr( $type ) . '" role="region" aria-label="' . esc_attr__( 'Driftinformation', 'finet-troubleshoot' ) . '" data-wpfinet-banner data-version="' . esc_attr( $version ) . '"' . ( $fallback ? ' data-wpfinet-banner-fallback' : '' ) . '>';
-		echo '<div class="wpfinet-banner__inner"><span class="wpfinet-banner__icon" aria-hidden="true"></span><p class="wpfinet-banner__text"><span class="wpfinet-banner__label">' . esc_html( 'planned' === $type ? __( 'Planerat arbete', 'finet-troubleshoot' ) : __( 'Driftstörning', 'finet-troubleshoot' ) ) . ( $status ? ' · ' . esc_html( $status ) : '' ) . '</span> <strong class="wpfinet-banner__title">' . esc_html( $first->post_title ) . '</strong>' . ( $more > 0 ? ' <a class="wpfinet-banner__more" href="' . esc_url( self::list_url() ) . '">' . esc_html( sprintf( /* translators: %d number */ _n( '+%d till', '+%d till', $more, 'finet-troubleshoot' ), $more ) ) . '</a>' : '' ) . '</p>';
-		echo '<a class="wpfinet-banner__link" href="' . esc_url( get_permalink( $first ) ) . '">' . esc_html__( 'Läs mer', 'finet-troubleshoot' ) . '<span class="screen-reader-text"> ' . esc_html( $first->post_title ) . '</span></a>';
-		echo '<button type="button" class="wpfinet-banner__close" data-wpfinet-banner-close aria-label="' . esc_attr__( 'Stäng driftmeddelande', 'finet-troubleshoot' ) . '"><span aria-hidden="true">×</span></button></div></aside>';
+		if ( $shown || ( $fallback && did_action( 'wp_body_open' ) ) ) { return; }
+		$data = $this->banner_data();
+		if ( ! $data ) { return; }
+		$shown = true;
+		$this->enqueue_assets(); // No-op when head_assets() already ran.
+		echo self::banner_html( $data, $fallback ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in banner_html().
+	}
+
+	/**
+	 * Banner markup (pure). Themes without wp_body_open get the fallback variant, which is fixed to the bottom of the
+	 * viewport instead of being moved to the top of <body> after load (3.1.0), so no content is pushed down.
+	 *
+	 * @param array{type:string,status:string,title:string,url:string,version:string,more:int,list_url:string} $data
+	 */
+	public static function banner_html( array $data, bool $fallback = false ): string {
+		$type = 'planned' === $data['type'] ? 'planned' : 'acute';
+		$more = (int) $data['more'];
+		$html  = '<aside class="wpfinet-banner wpfinet-banner--' . esc_attr( $type ) . ( $fallback ? ' wpfinet-banner--fallback' : '' ) . '" role="region" aria-label="' . esc_attr__( 'Driftinformation', 'finet-troubleshoot' ) . '" data-wpfinet-banner data-version="' . esc_attr( $data['version'] ) . '"' . ( $fallback ? ' data-wpfinet-banner-fallback' : '' ) . '>';
+		$html .= '<div class="wpfinet-banner__inner"><span class="wpfinet-banner__icon" aria-hidden="true"></span><p class="wpfinet-banner__text"><span class="wpfinet-banner__label">' . esc_html( 'planned' === $type ? __( 'Planerat arbete', 'finet-troubleshoot' ) : __( 'Driftstörning', 'finet-troubleshoot' ) ) . ( '' !== $data['status'] ? ' · ' . esc_html( $data['status'] ) : '' ) . '</span> <strong class="wpfinet-banner__title">' . esc_html( $data['title'] ) . '</strong>' . ( $more > 0 ? ' <a class="wpfinet-banner__more" href="' . esc_url( $data['list_url'] ) . '">' . esc_html( sprintf( /* translators: %d number */ _n( '+%d till', '+%d till', $more, 'finet-troubleshoot' ), $more ) ) . '</a>' : '' ) . '</p>';
+		$html .= '<a class="wpfinet-banner__link" href="' . esc_url( $data['url'] ) . '">' . esc_html__( 'Läs mer', 'finet-troubleshoot' ) . '<span class="screen-reader-text"> ' . esc_html( $data['title'] ) . '</span></a>';
+		$html .= '<button type="button" class="wpfinet-banner__close" data-wpfinet-banner-close aria-label="' . esc_attr__( 'Stäng driftmeddelande', 'finet-troubleshoot' ) . '"><span aria-hidden="true">×</span></button></div></aside>';
+		return $html;
 	}
 	public function routes(): void { register_rest_route( 'wpfinet/v1', '/outages/current', array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'rest_current' ), 'permission_callback' => '__return_true' ) ); register_rest_route( 'wpfinet/v1', '/outages', array( 'methods' => \WP_REST_Server::READABLE, 'callback' => array( $this, 'rest_outages' ), 'permission_callback' => '__return_true' ) ); }
 	public function rest_current( \WP_REST_Request $request ): \WP_REST_Response { return $this->rest_outages( $request, 'current' ); }
 	public function rest_outages( \WP_REST_Request $request, string $force = '' ): \WP_REST_Response { $bucket = $force ?: sanitize_key( (string) $request->get_param( 'status' ) ); $bucket = in_array( $bucket, array( 'current', 'upcoming', 'past' ), true ) ? $bucket : 'current'; $filters = array_filter( array( 'service' => sanitize_title( (string) $request->get_param( 'service' ) ), 'provider' => sanitize_title( (string) $request->get_param( 'provider' ) ), 'area' => sanitize_title( (string) $request->get_param( 'area' ) ) ) ); $posts = ( new OutageRepository() )->find( $bucket, $filters, 50 ); return rest_ensure_response( array_map( static fn ( \WP_Post $post ): array => ( new OutageRepository() )->public_data( $post ), $posts ) ); }
-	public function flush(): void { ( new OutageRepository() )->flush(); }
+	public function flush(): void { ( new OutageRepository() )->flush(); $this->reset_banner(); }
 	private function enqueue_assets(): void { if ( ! wp_style_is( 'wpfinet-outages', 'registered' ) ) { $this->assets(); } wp_enqueue_style( 'wpfinet-outages' ); wp_enqueue_script( 'wpfinet-outages' ); }
 	private function save_time( string $value ): string { if ( ! $value ) { return ''; } $time = \DateTimeImmutable::createFromFormat( 'Y-m-d\\TH:i', $value, wp_timezone() ); return $time ? $time->format( 'Y-m-d H:i:s' ) : ''; }
 	private function input_time( string $value ): string { if ( ! $value ) { return ''; } $time = \DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $value, wp_timezone() ); return $time ? $time->format( 'Y-m-d\\TH:i' ) : ''; }
