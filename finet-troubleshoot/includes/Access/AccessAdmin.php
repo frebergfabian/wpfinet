@@ -114,7 +114,7 @@ final class AccessAdmin {
 		$s       = AccessSettings::get();
 		$service = new AccessService( $s );
 		$health  = $service->health();
-		$real_missing = AccessSettings::missing( array_merge( $s, array( 'adapter' => 'http' ) ) ); // What a REAL integration still needs, also while test data is used.
+		$real_missing = AccessSettings::missing( 'mock' === $s['adapter'] ? array_merge( $s, array( 'adapter' => 'http' ) ) : $s ); // What a REAL integration still needs, also while test data is used.
 		$notice  = isset( $_GET['wpfinet_access'] ) ? sanitize_key( wp_unslash( $_GET['wpfinet_access'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		View::open( __( 'Adressökning – Finet Access API', 'finet-troubleshoot' ), __( 'Besökare söker en adress i taget. Servern svarar bara med status för den adressen – aldrig med listor. Sidvisningar gör aldrig anrop mot API:t.', 'finet-troubleshoot' ) );
 		$messages = array( 'saved' => __( 'Inställningarna är sparade.', 'finet-troubleshoot' ), 'secret_saved' => __( 'Hemligheten är sparad krypterat.', 'finet-troubleshoot' ), 'tested' => __( 'Anslutningstestet är klart – se resultatet nedan.', 'finet-troubleshoot' ), 'synced' => __( 'Synken lyckades.', 'finet-troubleshoot' ), 'sync_failed' => __( 'Synken misslyckades – se senaste resultat.', 'finet-troubleshoot' ), 'sync_queued' => __( 'Synken har köats och körs i bakgrunden.', 'finet-troubleshoot' ), 'looked_up' => __( 'Testsökningen är klar.', 'finet-troubleshoot' ), 'breaker_reset' => __( 'Kretsbrytaren är återställd.', 'finet-troubleshoot' ) );
@@ -125,9 +125,9 @@ final class AccessAdmin {
 
 		echo '<div class="wpf-grid">';
 		View::card_open( __( 'Status', 'finet-troubleshoot' ) );
-		echo '<div class="wpf-status">' . View::badge( Modules::enabled( 'access' ) ? __( 'Modul på', 'finet-troubleshoot' ) : __( 'Modul av', 'finet-troubleshoot' ), Modules::enabled( 'access' ) ? 'ok' : 'muted' ) . View::badge( 'mock' === $s['adapter'] ? __( 'Testdata', 'finet-troubleshoot' ) : __( 'Riktigt API', 'finet-troubleshoot' ), 'mock' === $s['adapter'] ? 'warn' : 'muted' ) . View::badge( $real_missing ? __( 'Riktig integration ej komplett', 'finet-troubleshoot' ) : __( 'Konfigurerad', 'finet-troubleshoot' ), $real_missing ? 'warn' : 'ok' ) . View::badge( $health['circuit_open'] ? __( 'Kretsbrytare öppen', 'finet-troubleshoot' ) : __( 'Kretsbrytare stängd', 'finet-troubleshoot' ), $health['circuit_open'] ? 'error' : 'ok' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div class="wpf-status">' . View::badge( Modules::enabled( 'access' ) ? __( 'Modul på', 'finet-troubleshoot' ) : __( 'Modul av', 'finet-troubleshoot' ), Modules::enabled( 'access' ) ? 'ok' : 'muted' ) . View::badge( array( 'mock' => __( 'Testdata', 'finet-troubleshoot' ), 'wpgetapi' => __( 'Via WPGetAPI', 'finet-troubleshoot' ), 'http' => __( 'Riktigt API', 'finet-troubleshoot' ) )[ $s['adapter'] ] ?? '', 'mock' === $s['adapter'] ? 'warn' : 'muted' ) . View::badge( $real_missing ? __( 'Riktig integration ej komplett', 'finet-troubleshoot' ) : __( 'Konfigurerad', 'finet-troubleshoot' ), $real_missing ? 'warn' : 'ok' ) . View::badge( $health['circuit_open'] ? __( 'Kretsbrytare öppen', 'finet-troubleshoot' ) : __( 'Kretsbrytare stängd', 'finet-troubleshoot' ), $health['circuit_open'] ? 'error' : 'ok' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$fresh = array( 'empty' => __( 'tomt', 'finet-troubleshoot' ), 'fresh' => __( 'aktuellt', 'finet-troubleshoot' ), 'stale' => __( 'inaktuellt (visas med varning)', 'finet-troubleshoot' ), 'expired' => __( 'för gammalt (besökare får "tillfälligt otillgänglig")', 'finet-troubleshoot' ) );
-		echo '<dl class="wpf-dl"><dt>' . esc_html__( 'Läge', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( 'index' === $s['mode'] ? __( 'Lokalt index (schemalagd synk)', 'finet-troubleshoot' ) : __( 'Uppslag per sökning', 'finet-troubleshoot' ) ) . '</dd>';
+		echo '<dl class="wpf-dl"><dt>' . esc_html__( 'Läge', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( AccessSettings::uses_index( $s ) ? __( 'Lokalt index (schemalagd synk)', 'finet-troubleshoot' ) : __( 'Uppslag per sökning', 'finet-troubleshoot' ) ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Endpoint', 'finet-troubleshoot' ) . '</dt><dd><code>' . esc_html( $health['endpoint'] ?: $s['base_url'] . '…' ) . '</code></dd>';
 		echo '<dt>' . esc_html__( 'Index', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( sprintf( __( '%1$d adresser, %2$s', 'finet-troubleshoot' ), $health['index_rows'], $fresh[ $health['freshness'] ] ) ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Senaste lyckade synk', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( View::time_ago( (int) $health['last_success'] ) ) . '</dd>';
@@ -158,6 +158,9 @@ final class AccessAdmin {
 		if ( $report ) {
 			echo '<p>' . esc_html( sprintf( __( 'Senaste inventering: %1$d platser med WPGetAPI-shortcode, %2$d med gammalt adresskript, %3$d med [wpfinet_access_check].', 'finet-troubleshoot' ), $report['summary']['wpgetapi_endpoint']['locations'], $report['summary']['legacy_address_js']['locations'], $report['summary']['wpfinet_access_check']['locations'] ) ) . ' <a href="' . esc_url( admin_url( 'admin.php?page=wpfinet-diagnostics' ) ) . '">' . esc_html__( 'Visa', 'finet-troubleshoot' ) . '</a></p>';
 		}
+		if ( 'wpgetapi' === $s['adapter'] ) {
+			echo '<p class="wpf-muted">' . esc_html__( 'Datakällan WPGetAPI kräver att WPGetAPI-pluginet är aktivt. Avaktivera det först när du bytt till "Finet Access API" och synken fungerar där.', 'finet-troubleshoot' ) . '</p>';
+		}
 		echo '<p class="wpf-muted">' . esc_html__( 'Stäng inte av WPGetAPI förrän inventeringen visar 0 oersatta referenser och sidorna har verifierats.', 'finet-troubleshoot' ) . '</p>';
 		View::card_close();
 		echo '</div>';
@@ -186,7 +189,9 @@ final class AccessAdmin {
 		self::form_open( 'save' );
 		echo '<div class="wpf-grid">';
 		echo '<div>';
-		View::select( 'access[adapter]', __( 'Datakälla', 'finet-troubleshoot' ), $s['adapter'], array_merge( array( 'http' => __( 'Finet Access API', 'finet-troubleshoot' ) ), AccessSettings::mock_allowed() ? array( 'mock' => __( 'Testdata (påhittade adresser)', 'finet-troubleshoot' ) ) : array() ), __( 'Testdata är avstängt i produktionsmiljö.', 'finet-troubleshoot' ) );
+		View::select( 'access[adapter]', __( 'Datakälla', 'finet-troubleshoot' ), $s['adapter'], array_merge( array( 'http' => __( 'Finet Access API (direkt, inställningarna nedan)', 'finet-troubleshoot' ), 'wpgetapi' => __( 'Befintlig WPGetAPI-konfiguration (endast bakgrundssynk)', 'finet-troubleshoot' ) ), AccessSettings::mock_allowed() ? array( 'mock' => __( 'Testdata (påhittade adresser)', 'finet-troubleshoot' ) ) : array() ), __( 'WPGetAPI: endpoint-sökväg och nyckel läses från WPGetAPI. Läget blir alltid index och fälten nedan används för mappningen. Testdata är avstängt i produktionsmiljö.', 'finet-troubleshoot' ) );
+		View::input( 'access[wpgetapi_api_id]', __( 'WPGetAPI: API-ID', 'finet-troubleshoot' ), (string) $s['wpgetapi_api_id'], __( 'Gamla lösningen: finet_access', 'finet-troubleshoot' ) );
+		View::input( 'access[wpgetapi_endpoint_id]', __( 'WPGetAPI: endpoint-ID', 'finet-troubleshoot' ), (string) $s['wpgetapi_endpoint_id'], __( 'Gamla lösningen: get_access_data', 'finet-troubleshoot' ) );
 		View::select( 'access[mode]', __( 'Läge', 'finet-troubleshoot' ), $s['mode'], array( 'index' => __( 'Index: hämta hela listan i bakgrunden', 'finet-troubleshoot' ), 'lookup' => __( 'Uppslag: fråga API:t per sökning (kräver filtrerad sökning i API:t)', 'finet-troubleshoot' ) ) );
 		View::input( 'access[base_url]', __( 'Base URL', 'finet-troubleshoot' ), (string) $s['base_url'], sprintf( __( 'Tillåtna värdar: %s (utöka endast via WPFINET_ACCESS_ALLOWED_HOSTS i wp-config.php).', 'finet-troubleshoot' ), implode( ', ', AccessSettings::allowed_hosts() ) ) );
 		View::input( 'access[endpoint_path]', __( 'Endpoint-sökväg', 'finet-troubleshoot' ), (string) $s['endpoint_path'], __( 'Relativ sökväg under base URL. OKÄND – hämtas från WPGetAPI-konfigurationen.', 'finet-troubleshoot' ) );
@@ -242,7 +247,7 @@ final class AccessAdmin {
 		View::card_close();
 
 		View::card_open( __( 'Användning', 'finet-troubleshoot' ) );
-		echo '<p><code>[wpfinet_access_check]</code> ' . esc_html__( '– fungerar i Elementors Shortcode-widget och i blockredigeraren (block "WPFINET adressökning"). Attribut: title, label, button, class.', 'finet-troubleshoot' ) . '</p>';
+		echo '<p><code>[wpfinet_access_check]</code> ' . esc_html__( '– fungerar i Elementors Shortcode-widget och i blockredigeraren (block "WPFINET adressökning"). Attribut: title, label, button, placeholder, hide_label (1 = etiketten visas bara för skärmläsare), hint (0 = dölj hjälptexten), theme (light | dark för mörk bakgrund som startsidans hero), class.', 'finet-troubleshoot' ) . '</p>';
 		echo '<p>' . esc_html__( 'Cloudflare: lägg gärna en WAF-regel med rate limiting för /wp-json/wpfinet/v1/access/check (t.ex. 30 anrop/min per IP) och undanta rutten från cache.', 'finet-troubleshoot' ) . '</p>';
 		View::card_close();
 		View::close();

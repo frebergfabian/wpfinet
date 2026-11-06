@@ -45,4 +45,12 @@ final class NormalizerTest extends TestCase {
 		$this->assertSame( array( 7, '' ), Normalizer::number_and_letter( 7, null ) );
 		$this->assertSame( array( 0, '' ), Normalizer::number_and_letter( 'x' ) );
 	}
+
+	public function test_fold_key_is_accent_insensitive_but_separate_from_street_key(): void {
+		$this->assertSame( 'ostra langgatan', Normalizer::fold_key( 'Östra Långgatan' ) );
+		$this->assertSame( Normalizer::fold_key( 'Ostra Langgatan' ), Normalizer::fold_key( 'Östra Långgatan' ) );
+		$this->assertNotSame( Normalizer::street_key( 'Ågatan' ), Normalizer::street_key( 'Agatan' ), 'the primary key keeps å/ä/ö apart' );
+		$this->assertSame( 'linnegatan', Normalizer::fold_key( 'Linnégatan' ) );
+		$this->assertSame( 'soren', Normalizer::fold_key( 'Søren' ) );
+	}
 }

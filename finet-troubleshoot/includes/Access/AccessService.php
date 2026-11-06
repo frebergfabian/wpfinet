@@ -29,8 +29,8 @@ final class AccessService {
 		if ( ! $address ) {
 			return $this->result( 'invalid' );
 		}
-		$source = 'mock' === $this->settings['adapter'] ? 'mock' : $this->settings['mode'];
-		if ( 'lookup' === $this->settings['mode'] && 'mock' !== $this->settings['adapter'] ) {
+		$source = 'mock' === $this->settings['adapter'] ? 'mock' : ( 'wpgetapi' === $this->settings['adapter'] ? 'wpgetapi' : $this->settings['mode'] );
+		if ( ! AccessSettings::uses_index( $this->settings ) ) {
 			return $this->live_lookup( $address );
 		}
 		$state = AddressIndex::state();
@@ -42,6 +42,11 @@ final class AccessService {
 			return $this->result( 'unavailable', array( 'source' => $source, 'hint' => 'index_too_old', 'checked_at' => gmdate( 'c', $state['last_success'] ) ) );
 		}
 		$rows = AddressIndex::find( $address['street_key'], $address['number'] );
+		if ( ! $rows ) {
+			// The API may spell a street without å/ä/ö (or the visitor may). Only used when exactly one street matches.
+			$folded = AddressIndex::find_folded( Normalizer::fold_key( $address['street_key'] ), $address['number'] );
+			$rows   = $folded['rows'];
+		}
 		return $this->evaluate( $address, $rows, $state['last_success'], $age > (int) $this->settings['stale_after_hours'] * HOUR_IN_SECONDS, $source );
 	}
 
@@ -73,7 +78,7 @@ final class AccessService {
 	/** @param array<int,array{state:string,connected:int|bool,letter:string}> $rows */
 	private function evaluate( array $address, array $rows, int $time, bool $stale, string $source ): array {
 		$exact = array_values( array_filter( $rows, static fn ( $r ) => (string) $r['letter'] === $address['letter'] ) );
-		$extra = array( 'stale' => $stale, 'checked_at' => gmdate( 'c', $time ), 'source' => $source );
+		$extra = array( 'stale' => $stale, 'checked_at' => gmdate( 'c', $time ), 'source' => $source, 'address' => $address );
 		if ( ! $exact ) {
 			$letters = array_filter( $rows, static fn ( $r ) => '' !== (string) $r['letter'] );
 			return $this->result( 'no_match', $extra + array( 'hint' => '' === $address['letter'] && $letters ? 'letter_required' : '' ) );
@@ -94,6 +99,7 @@ final class AccessService {
 			$cta = array( 'url' => (string) $s['cta_not_connected_url'], 'label' => (string) $s['cta_not_connected_label'] );
 		}
 		$stale = ! empty( $extra['stale'] );
+		$message = str_replace( '{adress}', isset( $extra['address'] ) ? self::display( $extra['address'] ) : __( 'Adressen', 'finet-troubleshoot' ), (string) $message );
 		return array(
 			'status'     => $status,
 			'message'    => $stale ? $message . ' ' . $s['text_stale'] : $message,
@@ -105,11 +111,17 @@ final class AccessService {
 		);
 	}
 
+	/** The visitor's own address, tidied: "storgatan 12 b" → "Storgatan 12B". */
+	public static function display( array $address ): string {
+		$street = (string) $address['street'];
+		return mb_strtoupper( mb_substr( $street, 0, 1 ) ) . mb_substr( $street, 1 ) . ' ' . (int) $address['number'] . mb_strtoupper( (string) $address['letter'] );
+	}
+
 	/** Background sync (WP-Cron / Task Scheduler / WP-CLI / admin). @return array{ok:bool,message:string,rows:int} */
 	public function sync( bool $background = true ): array {
 		$started = time();
 		AddressIndex::update_state( array( 'last_attempt' => $started ) );
-		if ( 'lookup' === $this->settings['mode'] && 'mock' !== $this->settings['adapter'] ) {
+		if ( ! AccessSettings::uses_index( $this->settings ) ) {
 			return $this->sync_result( false, 'Läget "uppslag per sökning" använder inget index; ingen synk behövs.', 0 );
 		}
 		$response = $this->client()->request( array(), (float) ( $background ? $this->settings['sync_timeout'] : min( 10, (int) $this->settings['sync_timeout'] ) ), $background ? 2 : 0 );
@@ -142,7 +154,7 @@ final class AccessService {
 	/** Admin connection test with masked schema preview. @return array<string,mixed> */
 	public function test_connection(): array {
 		$response = $this->client()->request( array(), 5.0, 0 );
-		$out      = array( 'ok' => $response['ok'], 'status' => $response['status'], 'error' => $response['error'], 'duration_ms' => $response['duration_ms'], 'bytes' => $response['bytes'], 'content_type' => $response['content_type'], 'endpoint' => 'mock' === $this->settings['adapter'] ? '(testdata)' : AccessSettings::endpoint_url( $this->settings ) );
+		$out      = array( 'ok' => $response['ok'], 'status' => $response['status'], 'error' => $response['error'], 'duration_ms' => $response['duration_ms'], 'bytes' => $response['bytes'], 'content_type' => $response['content_type'], 'endpoint' => self::endpoint_label( $this->settings ) );
 		if ( $response['ok'] ) {
 			$items                = $this->client()->items( $response['data'] );
 			$out['list_paths']    = AccessClient::list_paths( $response['data'] );
@@ -155,6 +167,12 @@ final class AccessService {
 		return $out;
 	}
 
+	private static function endpoint_label( array $s ): string {
+		if ( 'mock' === $s['adapter'] ) { return '(testdata)'; }
+		if ( 'wpgetapi' === $s['adapter'] ) { return sprintf( 'WPGetAPI: %s / %s', $s['wpgetapi_api_id'], $s['wpgetapi_endpoint_id'] ); }
+		return AccessSettings::endpoint_url( $s );
+	}
+
 	/** @return array<string,mixed> */
 	public function health(): array {
 		$state   = AddressIndex::state();
@@ -165,7 +183,7 @@ final class AccessService {
 			'missing'      => AccessSettings::missing( $this->settings ),
 			'adapter'      => $this->settings['adapter'],
 			'mode'         => $this->settings['mode'],
-			'endpoint'     => AccessSettings::endpoint_url( $this->settings ),
+			'endpoint'     => self::endpoint_label( $this->settings ),
 			'index_rows'   => $state['rows'],
 			'last_success' => $state['last_success'],
 			'last_attempt' => $state['last_attempt'],

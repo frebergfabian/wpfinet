@@ -31,10 +31,10 @@ final class GuideEditor {
 		$is_guide = $screen && GuidePostType::POST_TYPE === $screen->post_type;
 		if ( ! $is_guide ) { return; } // The import page assets are enqueued by AdminMenu (2.0.1 checked a hook name that never matched, B16).
 		wp_enqueue_media();
-		wp_enqueue_style( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.css', array(), FINET_TS_VERSION );
-		wp_enqueue_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), FINET_TS_VERSION );
-		wp_enqueue_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), FINET_TS_VERSION, true );
-		wp_enqueue_script( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.js', array( 'wp-api-fetch', 'wp-i18n' ), FINET_TS_VERSION, true );
+		wp_enqueue_style( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'admin.css' ) );
+		wp_enqueue_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.css' ) );
+		wp_enqueue_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.js' ), true );
+		wp_enqueue_script( 'finet-troubleshoot-admin', FINET_TS_URL . 'assets/build/admin.js', array( 'wp-api-fetch', 'wp-i18n' ), \FinetTroubleshoot\Core\Assets::ver( 'admin.js' ), true );
 		wp_add_inline_script( 'finet-troubleshoot-admin', 'window.FinetTroubleshootAdmin=' . wp_json_encode( array( 'restRoot' => esc_url_raw( rest_url( 'finet-troubleshoot/v1/' ) ), 'nonce' => wp_create_nonce( 'wp_rest' ), 'wpforms' => $this->wpforms->forms(), 'strings' => array( 'saved' => __( 'Guiden är sparad.', 'finet-troubleshoot' ), 'copied' => __( 'Shortcode kopierad.', 'finet-troubleshoot' ) ) ) ) . ';', 'before' );
 	}
 }

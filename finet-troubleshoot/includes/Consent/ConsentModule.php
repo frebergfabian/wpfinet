@@ -35,8 +35,8 @@ final class ConsentModule {
 	}
 
 	public function assets(): void {
-		wp_enqueue_style( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.css', array(), FINET_TS_VERSION );
-		wp_enqueue_script( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.js', array(), FINET_TS_VERSION, array( 'in_footer' => true ) );
+		wp_enqueue_style( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'consent.css' ) );
+		wp_enqueue_script( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'consent.js' ), array( 'in_footer' => true ) );
 	}
 
 	/** In preview mode visitors keep seeing the existing (WPConsent) policy; only WPFINET admins see the new one. */
@@ -44,7 +44,7 @@ final class ConsentModule {
 		if ( ! ConsentService::instance()->internal_active() ) {
 			return current_user_can( 'edit_posts' ) ? '<p class="wpfinet-module-off">' . esc_html__( 'WPFINET-cookiepolicyn visas för besökare när samtyckeshanteraren är live.', 'finet-troubleshoot' ) . '</p>' : '';
 		}
-		wp_enqueue_style( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.css', array(), FINET_TS_VERSION );
+		wp_enqueue_style( 'wpfinet-consent', FINET_TS_URL . 'assets/build/consent.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'consent.css' ) );
 		return Policy::render( false );
 	}
 

@@ -38,6 +38,8 @@ Gå igenom avsnitten i ordning på **staging**. Varje steg har ett förväntat r
 | B5 | CTA-knappar: telefon, e-post, länk, support, WPForms | Rätt länkar. WPForms öppnas i en modal eller direkt i noden. Formuläret går att skicka. |
 | B6 | Driftkontrollnod (om någon guide har en) | Om det finns en aktuell driftstörning som matchar visas den, eller så hoppar guiden till rätt nod. |
 | B7 | Mobil (riktig telefon eller 390 px bred webbläsare) | Ingen horisontell scroll. Knapparna är fullbredd. |
+| B8 | (3.1.1) Öppna `/guide/` på 1920, 1440 och 1280 px samt 390 och 375 px | Guiden är 760 px bred på desktop och fyller kolumnen på mobil. Rubriker och knappar bryts mellan ord, aldrig bokstav för bokstav. |
+| B9 | (3.1.1) Klicka igenom flera steg, långa och korta | Guidens höjd och texten under den ("Frågor och svar") står still. På mobil får bara steg som är längre än 80 % av skärmen guiden att växa. |
 
 ## C. Guidebyggaren (admin)
 
@@ -156,6 +158,8 @@ curl -s -o /dev/null -w "%{http_code} %{time_starttransfer}\n" https://staging.e
 |---|---|---|
 | M1 | Kör kommandot ovan 5 gånger mot startsidan, en guidesida och `/driftstorningar/` (gärna både med och utan Cloudflare-cache) | Samma eller bättre än före uppgraderingen. Målet är under 1 s i samma miljö. |
 | M2 | Sätt Adressökning till Finet Access API med en felaktig endpoint, och Instagram med en ogiltig token | Sidorna är lika snabba. Sökningen ger "tillfälligt otillgänglig" (max ca 3 s, efter 3 fel omedelbart). |
+| M3 | (3.1.1) Chrome DevTools → Lighthouse → Performance, mobil och desktop, på startsidan, `/guide/` och `/felsokningsguide/` med en aktiv driftstörning i bannern. Kör i ett inkognitofönster (tom cache). | CLS under 0,1, normalt nära 0. Under "Avoid large layout shifts" finns inget WPFINET-element (`wpfinet-banner`, `finet-troubleshoot`). |
+| M4 | (3.1.1) Stäng bannern och ladda om sidan | Bannern syns inte alls, inte ens kort, och sidan hoppar inte. |
 
 ## N. Avslutning och rollback
 

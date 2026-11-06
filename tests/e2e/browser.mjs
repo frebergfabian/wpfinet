@@ -18,11 +18,11 @@ try {
 	check('two guide instances render', (await guides.count()) === 2);
 	const first = guides.nth(0);
 	await first.getByRole('button', { name: 'Nej, hjälp mig' }).click();
-	check('branching navigates', await first.locator('.wpfinet-guide__heading').innerText() === 'Starta om utrustningen');
+	check('branching navigates', await first.locator('[data-stage] > [data-node] .wpfinet-guide__heading').innerText() === 'Starta om utrustningen');
 	check('focus moves to heading', await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('wpfinet-guide__heading')));
-	check('instances are independent', (await guides.nth(1).locator('.wpfinet-guide__heading').innerText()) === 'Har du startat om routern?');
+	check('instances are independent', (await guides.nth(1).locator('[data-stage] > [data-node] .wpfinet-guide__heading').innerText()) === 'Har du startat om routern?');
 	await first.getByRole('button', { name: /Tillbaka/ }).click();
-	check('back works', await first.locator('.wpfinet-guide__heading').innerText() === 'Har du startat om routern?');
+	check('back works', await first.locator('[data-stage] > [data-node] .wpfinet-guide__heading').innerText() === 'Har du startat om routern?');
 	await first.getByRole('button', { name: 'Nej, hjälp mig' }).click();
 	await first.locator('[data-restart]').click();
 	const dialog = page.getByRole('dialog');
@@ -30,11 +30,26 @@ try {
 	await page.keyboard.press('Tab'); await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
 	check('focus stays in dialog', await page.evaluate(() => !!document.activeElement.closest('[role=dialog]')));
 	await dialog.locator('[data-ok]').click();
-	check('restart resets', await first.locator('.wpfinet-guide__heading').innerText() === 'Har du startat om routern?');
+	check('restart resets', await first.locator('[data-stage] > [data-node] .wpfinet-guide__heading').innerText() === 'Har du startat om routern?');
 	const stored = await page.evaluate(() => { try { return sessionStorage.getItem('wpfinet_analytics_session'); } catch (e) { return 'err'; } });
 	check('no analytics session without consent', stored === null);
 	check('no cookies set by WPFINET for visitor', (await ctx.cookies()).every((c) => !/wpfinet|finet/i.test(c.name)));
 	check('no JS errors on front end', errors.length === 0, errors.join('; '));
+
+	// Outage banner: close really hides it, stays closed for the session, returns in a new session.
+	await page.goto(`${B}/`);
+	const banner = page.locator('[data-wpfinet-banner]');
+	check('banner visible', await banner.isVisible());
+	check('banner is a labelled region', (await banner.getAttribute('role')) === 'region' && !!(await banner.getAttribute('aria-label')));
+	await page.getByRole('button', { name: 'Stäng driftmeddelande' }).click();
+	check('banner close hides it', !(await banner.isVisible()) && (await banner.boundingBox()) === null);
+	await page.reload();
+	check('banner stays closed in the same session', !(await page.locator('[data-wpfinet-banner]').isVisible()));
+	const fresh = await browser.newPage({ viewport: { width: 390, height: 844 } });
+	await fresh.goto(`${B}/`);
+	check('banner shown again in a new session', await fresh.locator('[data-wpfinet-banner]').isVisible());
+	check('banner fits a phone (no overflow, close ≥ 44px)', await fresh.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.querySelector('[data-wpfinet-banner-close]').getBoundingClientRect().width >= 44));
+	await fresh.close();
 
 	// Address check (mock data).
 	await page.goto(`${B}/adresskoll/`);
@@ -54,7 +69,7 @@ try {
 	const [resp] = await Promise.all([page.waitForResponse((r) => r.url().includes('/access/check')), input.press('Enter')]);
 	const body = await resp.text();
 	await page.waitForFunction(() => document.querySelector('.wpfinet-access__result').className.includes('is-connected'));
-	check('address check: response contains one status only', !body.includes('Exempelgatan') && body.length < 400 && JSON.parse(body).status === 'connected', body);
+	check('address check: response contains one status only', !/Exempelgatan [23]|testv|Testall|"CONNECTED"|NOT_CONNECTED|PLANNED/.test(body) && body.length < 400 && JSON.parse(body).status === 'connected', body);
 	check('address check: no inline script in page content', (await page.locator('.wpfinet-access script').count()) === 0);
 	await page.route('**/access/check', (route) => route.abort());
 	await input.fill('Exempelgatan 1'); await input.press('Enter');

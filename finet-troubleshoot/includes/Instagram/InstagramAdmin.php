@@ -16,7 +16,7 @@ use FinetTroubleshoot\Core\Secrets;
 
 final class InstagramAdmin {
 	public static function register_hooks(): void {
-		foreach ( array( 'save', 'token', 'disconnect', 'app_secret', 'oauth_start', 'oauth', 'sync', 'refresh' ) as $action ) {
+		foreach ( array( 'save', 'token', 'disconnect', 'app_secret', 'oauth_start', 'oauth', 'sync', 'refresh', 'test', 'pick' ) as $action ) {
 			add_action( 'admin_post_wpfinet_instagram_' . $action, array( self::class, 'handle_' . $action ) );
 		}
 	}
@@ -86,13 +86,28 @@ final class InstagramAdmin {
 	public static function handle_sync(): void {
 		self::guard( 'sync' );
 		$state = InstagramService::state();
-		if ( time() - (int) $state['last_manual'] < 5 * MINUTE_IN_SECONDS ) {
-			self::back( 'error', __( 'Manuell synk kan köras högst var femte minut.', 'finet-troubleshoot' ) );
+		if ( time() - (int) $state['last_manual'] < MINUTE_IN_SECONDS ) {
+			self::back( 'error', __( 'Vänta en minut mellan manuella hämtningar (Metas anropsgränser).', 'finet-troubleshoot' ) );
 		}
 		InstagramService::update_state( array( 'last_manual' => time() ) );
-		wp_schedule_single_event( time(), 'wpfinet_instagram_sync_manual' );
-		spawn_cron();
-		self::back( 'queued' );
+		// 3.1: runs directly in this admin request (3.0 queued a WP-Cron job, which never ran when loopback requests
+		// were blocked by IIS/Cloudflare, when DISABLE_WP_CRON was set or when the module was switched off).
+		if ( function_exists( 'set_time_limit' ) ) { @set_time_limit( 120 ); } // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		$result = ( new InstagramService() )->sync();
+		self::back( $result['ok'] ? 'synced' : 'error', $result['message'] );
+	}
+
+	public static function handle_test(): void {
+		self::guard( 'test' );
+		if ( function_exists( 'set_time_limit' ) ) { @set_time_limit( 90 ); } // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		$result = ( new InstagramService() )->test_connection();
+		self::back( $result['ok'] ? 'tested' : 'test_failed' );
+	}
+
+	public static function handle_pick(): void {
+		self::guard( 'pick' );
+		InstagramService::update_settings( array( 'account_id' => isset( $_POST['account_id'] ) ? sanitize_text_field( wp_unslash( $_POST['account_id'] ) ) : '' ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		self::back( 'saved', __( 'Instagram Account ID sparat.', 'finet-troubleshoot' ) );
 	}
 
 	public static function handle_refresh(): void {
@@ -115,7 +130,8 @@ final class InstagramAdmin {
 		$message  = (string) get_transient( 'wpfinet_ig_msg_' . get_current_user_id() );
 		delete_transient( 'wpfinet_ig_msg_' . get_current_user_id() );
 		View::open( __( 'Instagramflöde', 'finet-troubleshoot' ), __( 'Inlägg hämtas i bakgrunden via Metas officiella API och sparas lokalt – även bilderna. Sidvisningar gör inga anrop till Meta och laddar inget från Metas servrar.', 'finet-troubleshoot' ) );
-		$labels = array( 'saved' => __( 'Sparat.', 'finet-troubleshoot' ), 'connected' => __( 'Kontot är anslutet.', 'finet-troubleshoot' ), 'disconnected' => __( 'Kontot är frånkopplat.', 'finet-troubleshoot' ), 'queued' => __( 'Synken körs i bakgrunden.', 'finet-troubleshoot' ), 'refreshed' => __( 'Token förnyad.', 'finet-troubleshoot' ) );
+		$labels = array( 'saved' => __( 'Sparat.', 'finet-troubleshoot' ), 'connected' => __( 'Kontot är anslutet.', 'finet-troubleshoot' ), 'disconnected' => __( 'Kontot är frånkopplat.', 'finet-troubleshoot' ), 'synced' => __( 'Hämtningen är klar.', 'finet-troubleshoot' ), 'refreshed' => __( 'Token förnyad.', 'finet-troubleshoot' ), 'tested' => __( 'Anslutningstestet är klart – inga fel hittades.', 'finet-troubleshoot' ) );
+		if ( 'test_failed' === $notice ) { View::notice( 'warning', __( 'Anslutningstestet hittade problem – se stegen nedan.', 'finet-troubleshoot' ) ); }
 		if ( 'error' === $notice ) { View::notice( 'error', $message ?: __( 'Något gick fel.', 'finet-troubleshoot' ) ); }
 		elseif ( isset( $labels[ $notice ] ) ) { View::notice( 'success', $message ?: $labels[ $notice ] ); }
 		if ( ! Modules::enabled( 'instagram' ) ) { View::notice( 'info', __( 'Modulen är avstängd. Slå på den under Moduler & integrationer för att schemalägga hämtning och visa flödet.', 'finet-troubleshoot' ) ); }
@@ -123,14 +139,17 @@ final class InstagramAdmin {
 		echo '<div class="wpf-grid">';
 		View::card_open( __( 'Status', 'finet-troubleshoot' ) );
 		echo '<div class="wpf-status">' . View::badge( $health['connected'] ? __( 'Ansluten', 'finet-troubleshoot' ) : __( 'Ej ansluten', 'finet-troubleshoot' ), $health['connected'] ? 'ok' : 'warn' ) . ( $health['circuit_open'] ? View::badge( __( 'API pausat efter fel', 'finet-troubleshoot' ), 'error' ) : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<dl class="wpf-dl"><dt>' . esc_html__( 'Konto', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $health['username'] ? '@' . $health['username'] . ' (' . $health['account_type'] . ')' : '–' ) . '</dd>';
-		echo '<dt>' . esc_html__( 'Token', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( array( 'constant' => 'wp-config.php', 'database' => __( 'krypterad i databasen', 'finet-troubleshoot' ), 'none' => '–' )[ $health['token_source'] ] ) . ( $health['token_expires'] ? ' · ' . esc_html( sprintf( __( 'går ut %s', 'finet-troubleshoot' ), wp_date( 'Y-m-d', $health['token_expires'] ) ) ) : '' ) . '</dd>';
+		echo '<dl class="wpf-dl"><dt>' . esc_html__( 'Konto', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $health['username'] ? '@' . $health['username'] . ( $health['account_type'] ? ' (' . $health['account_type'] . ')' : '' ) : '–' ) . '</dd>';
+		echo '<dt>' . esc_html__( 'API-modell', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( InstagramService::model_label( (string) $health['model'] ) . ( 'auto' === $settings['api_model'] ? ' – automatiskt' : '' ) ) . '</dd>';
+		echo '<dt>' . esc_html__( 'Instagram Account ID', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $health['account_id'] ?: '–' ) . ( $settings['account_id'] ? ' ' . esc_html__( '(manuellt)', 'finet-troubleshoot' ) : ( $health['account_id'] ? ' ' . esc_html__( '(identifierat)', 'finet-troubleshoot' ) : '' ) ) . '</dd>';
+		echo '<dt>' . esc_html__( 'Token', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( array( 'constant' => 'wp-config.php', 'ok' => __( 'krypterad i databasen', 'finet-troubleshoot' ), 'undecryptable' => __( 'KAN INTE LÄSAS – spara token igen', 'finet-troubleshoot' ), 'none' => '–' )[ $health['token_status'] ] ) . ( $health['token_expires'] ? ' · ' . esc_html( sprintf( __( 'går ut %s', 'finet-troubleshoot' ), wp_date( 'Y-m-d', $health['token_expires'] ) ) ) : '' ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Lokalt sparade inlägg', 'finet-troubleshoot' ) . '</dt><dd>' . (int) $health['posts'] . '</dd>';
 		echo '<dt>' . esc_html__( 'Senaste lyckade hämtning', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( View::time_ago( $health['last_sync'] ) ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Senaste resultat', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $health['last_result'] ?: '–' ) . '</dd>';
 		echo '<dt>' . esc_html__( 'Nästa hämtning', 'finet-troubleshoot' ) . '</dt><dd>' . esc_html( $health['next_sync'] ? wp_date( 'Y-m-d H:i', $health['next_sync'] ) : '–' ) . '</dd></dl><div class="wpf-actions">';
+		self::form( 'test', '', __( 'Testa anslutning', 'finet-troubleshoot' ), 'button' );
 		if ( $health['connected'] ) {
-			self::form( 'sync', '', __( 'Hämta nu (i bakgrunden)', 'finet-troubleshoot' ), 'button button-primary' );
+			self::form( 'sync', '', __( 'Hämta nu', 'finet-troubleshoot' ), 'button button-primary' );
 			self::form( 'refresh', '', __( 'Förnya token', 'finet-troubleshoot' ) );
 			self::form( 'disconnect', '', __( 'Koppla från', 'finet-troubleshoot' ), 'button button-link-delete' );
 		}
@@ -138,8 +157,8 @@ final class InstagramAdmin {
 		View::card_close();
 
 		View::card_open( __( 'Anslut konto', 'finet-troubleshoot' ) );
-		echo '<p>' . esc_html__( 'Kräver ett professionellt Instagramkonto (Business eller Creator) och en Meta-app med produkten "Instagram API with Instagram Login" och behörigheten instagram_business_basic.', 'finet-troubleshoot' ) . '</p>';
-		echo '<h3>' . esc_html__( 'Alternativ A: klistra in långlivad token', 'finet-troubleshoot' ) . '</h3><p class="wpf-muted">' . esc_html__( 'Genereras i Meta App Dashboard. Token verifieras mot API:t innan den sparas krypterat och förnyas automatiskt innan den går ut (60 dagar).', 'finet-troubleshoot' ) . '</p>';
+		echo '<p>' . esc_html__( 'Kräver ett professionellt Instagramkonto (Business eller Creator). Två tokentyper fungerar: (1) Instagram-inloggning – token börjar oftast med IGAA, behörighet instagram_business_basic. (2) Facebook-inloggning – token börjar med EAA, Instagramkontot ska vara kopplat till en Facebook-sida, behörigheter instagram_basic och pages_show_list. WPFINET känner igen typen och hittar Account ID automatiskt.', 'finet-troubleshoot' ) . '</p>';
+		echo '<h3>' . esc_html__( 'Alternativ A: klistra in långlivad token', 'finet-troubleshoot' ) . '</h3><p class="wpf-muted">' . esc_html__( 'Genereras i Meta App Dashboard (Instagram-inloggning) eller i Graph API Explorer/Business-inställningar (Facebook-inloggning, helst en långlivad sid-token). Token verifieras innan den sparas krypterat. Instagram-token förnyas automatiskt innan den går ut (60 dagar).', 'finet-troubleshoot' ) . '</p>';
 		self::form( 'token', '<div class="wpf-field"><label class="wpf-field__label" for="wpf-ig-token">' . esc_html__( 'Access token', 'finet-troubleshoot' ) . '</label><input id="wpf-ig-token" type="password" name="token" class="large-text" autocomplete="off" required></div>', __( 'Verifiera och spara', 'finet-troubleshoot' ), 'button button-primary' );
 		echo '<h3>' . esc_html__( 'Alternativ B: logga in med Instagram (OAuth)', 'finet-troubleshoot' ) . '</h3><p class="wpf-muted">' . esc_html( sprintf( __( 'Registrera omdirigerings-URI:n %s i Meta-appen (verifiera att Meta godtar URI:n med query-parameter).', 'finet-troubleshoot' ), InstagramService::redirect_uri() ) ) . '</p>';
 		echo '<p>' . esc_html( sprintf( __( 'App-hemlighet: %s', 'finet-troubleshoot' ), array( 'constant' => 'wp-config.php', 'database' => __( 'sparad (krypterad)', 'finet-troubleshoot' ), 'none' => __( 'saknas', 'finet-troubleshoot' ) )[ Secrets::source( 'instagram_app_secret' ) ] ) ) . '</p>';
@@ -152,11 +171,31 @@ final class InstagramAdmin {
 		View::card_close();
 		echo '</div>';
 
+		$test = get_option( InstagramService::TEST );
+		if ( is_array( $test ) ) {
+			View::card_open( __( 'Senaste anslutningstest', 'finet-troubleshoot' ) );
+			echo '<p class="wpf-muted">' . esc_html( View::time_ago( (int) $test['time'] ) ) . '</p><table class="wpf-table"><tbody>';
+			foreach ( (array) $test['steps'] as $step ) {
+				$badge = null === $step['ok'] ? View::badge( __( 'Info', 'finet-troubleshoot' ), 'muted' ) : ( $step['ok'] ? View::badge( 'OK', 'ok' ) : View::badge( __( 'Fel', 'finet-troubleshoot' ), 'error' ) );
+				echo '<tr><td>' . $badge . '</td><th scope="row">' . esc_html( $step['label'] ) . '</th><td>' . esc_html( $step['detail'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</tbody></table>';
+			if ( count( (array) $test['accounts'] ) > 1 ) {
+				echo '<h3>' . esc_html__( 'Välj konto', 'finet-troubleshoot' ) . '</h3>';
+				foreach ( (array) $test['accounts'] as $account ) {
+					self::form( 'pick', '<input type="hidden" name="account_id" value="' . esc_attr( $account['id'] ) . '"><span>@' . esc_html( $account['username'] ) . ' · ' . esc_html( $account['id'] ) . ' · ' . esc_html( $account['source'] ) . '</span> ', __( 'Använd', 'finet-troubleshoot' ) );
+				}
+			}
+			View::card_close();
+		}
+
 		View::card_open( __( 'Inställningar', 'finet-troubleshoot' ) );
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'wpfinet_instagram_save' );
 		echo '<input type="hidden" name="action" value="wpfinet_instagram_save"><div class="wpf-grid"><div>';
-		View::input( 'ig[app_id]', __( 'Instagram app-ID', 'finet-troubleshoot' ), (string) $settings['app_id'], __( 'Behövs bara för OAuth.', 'finet-troubleshoot' ) );
+		View::select( 'ig[api_model]', __( 'API-modell', 'finet-troubleshoot' ), (string) $settings['api_model'], array( 'auto' => __( 'Automatiskt (efter token: IGAA… = Instagram, EAA… = Facebook)', 'finet-troubleshoot' ), 'instagram_login' => __( 'Instagram API med Instagram-inloggning', 'finet-troubleshoot' ), 'facebook_login' => __( 'Instagram API med Facebook-inloggning (via Facebook-sida)', 'finet-troubleshoot' ) ) );
+		View::input( 'ig[account_id]', __( 'Instagram Account ID (valfritt)', 'finet-troubleshoot' ), (string) $settings['account_id'], __( 'Lämna tomt för automatisk identifiering. Krävs bara om token har åtkomst till flera konton.', 'finet-troubleshoot' ), array( 'inputmode' => 'numeric' ) );
+		View::input( 'ig[app_id]', __( 'Instagram app-ID', 'finet-troubleshoot' ), (string) $settings['app_id'], __( 'Behövs bara för OAuth med Instagram-inloggning.', 'finet-troubleshoot' ) );
 		View::input( 'ig[api_version]', __( 'API-version', 'finet-troubleshoot' ), (string) $settings['api_version'], __( 'T.ex. v23.0. Tomt = appens standardversion. Kontrollera aktuell version hos Meta.', 'finet-troubleshoot' ) );
 		View::select( 'ig[sync_interval]', __( 'Hämtningsintervall', 'finet-troubleshoot' ), (string) $settings['sync_interval'], array( 'wpfinet_30min' => '30 min', 'hourly' => __( 'Varje timme', 'finet-troubleshoot' ), 'twicedaily' => __( 'Två gånger per dygn', 'finet-troubleshoot' ), 'daily' => __( 'Dagligen', 'finet-troubleshoot' ) ) );
 		echo '</div><div>';

@@ -55,6 +55,21 @@ final class Normalizer {
 		return trim( $s );
 	}
 
+	/**
+	 * Accent-insensitive key, like the legacy front-end script (NFD, combining marks removed: å/ä → a, ö → o).
+	 * Only used as a fallback when the exact key has no match AND the folded key points to exactly one street.
+	 */
+	public static function fold_key( string $street ): string {
+		$s = self::street_key( $street );
+		if ( class_exists( '\Normalizer' ) ) {
+			$d = \Normalizer::normalize( $s, \Normalizer::FORM_D );
+			if ( is_string( $d ) ) { $s = (string) preg_replace( '/\p{Mn}+/u', '', $d ); }
+		} else {
+			$s = strtr( $s, array( 'å' => 'a', 'ä' => 'a', 'ö' => 'o' ) );
+		}
+		return strtr( $s, array( 'ø' => 'o', 'æ' => 'a' ) );
+	}
+
 	public static function letter( string $letter ): string {
 		$letter = mb_strtolower( trim( self::nfc( $letter ) ), 'UTF-8' );
 		return 1 === mb_strlen( $letter ) && preg_match( '/^\p{L}$/u', $letter ) ? $letter : '';

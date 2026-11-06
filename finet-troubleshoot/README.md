@@ -1,8 +1,8 @@
-# WPFINET (Finet Troubleshoot) 3.0
+# WPFINET (Finet Troubleshoot) 3.1
 
 Ett produktionsinriktat WordPress-plugin för interaktiva, nodbaserade felsökningsguider, driftstörningar och samtyckesstyrd statistik. Guider publiceras med en shortcode, fungerar i Elementor Shortcode-widgeten och kan flyttas mellan WordPress-installationer som dokumenterad JSON.
 
-## Nytt i 3.0
+## Nytt i 3.0 och 3.1
 
 Se [CHANGELOG.md](CHANGELOG.md) och repo-dokumentationen i `docs/`. Nya moduler är avstängda som standard och slås på under **WPFinet → Moduler & integrationer**:
 

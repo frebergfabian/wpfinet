@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.1.1
+
+Rättar två regressioner i 3.1.0 som syntes på dev.finet.se. Inga data, shortcodes, slugs, REST-rutter eller inställningar ändras.
+
+**Felsökningsguiden krympte till en smal kolumn**
+
+- Orsak: `.wpfinet-guide` hade `container-type: inline-size`. Containment gör att innehållet räknas som 0 px brett, och `.finet-troubleshoot` hade ingen egen bredd. I Elementor-containrar som anpassar bredden efter innehållet (t.ex. `align-items: flex-start` på `/guide/`) blev guiden därför 0 px. `overflow-wrap: anywhere` lät sedan texten brytas mellan varje bokstav.
+- Åtgärd: ingen containment; `width: 100%; max-width: 760px`; vanlig ordbrytning (`overflow-wrap: break-word`). Containerfrågorna ersattes med layouter som anpassar sig själva (auto-fit, flex-wrap) och en mediefråga.
+- Stabil höjd utan JavaScript-mätning. Alla steg ligger osynligt staplade i samma rutnätscell, så ytan är alltid lika hög som det högsta steget vid varje bredd, typsnitt och zoom. 3.1.0 mätte en gång och kunde mäta när bredden var 0. På mobil begränsas reservationen till 80 % av skärmhöjden, så att knapparna syns.
+- Första steget renderas på servern med samma markup som JavaScript ger (verifieras i `tests/js/guide-ssr.test.js`). Inget under guiden flyttas när skriptet startar.
+- Rubrikerna använder temats rubriktypsnitt (Poppins) i stället för Elementors oanvända globala Roboto. Temats knappstilar (Astra) läcker inte längre in.
+- Säkerhet: runtime-JS:ens `esc()` escapade inte citattecken. Ett `"` i en guidetitel eller knapptext kunde avsluta ett HTML-attribut. Rättat.
+
+**Layoutförskjutning (CLS) från driftbannern**
+
+- Orsak: bannerns CSS köades när bannern ritades i `<body>` och skrevs därför ut i sidfoten. Bannern ritades först utan stil, och hela sidan flyttades. Lighthouse visade CLS på cirka 1,0 på desktop. En banner som redan stängts doldes dessutom först efter sidladdning, och reservvarianten (teman utan `wp_body_open`) flyttades till toppen med JavaScript.
+- Åtgärd: när en banner ska visas skrivs CSS:en ut i `<head>`. Ett litet skript i `<head>` döljer en redan stängd banner innan något ritas. Reservvarianten ligger fast i fönstrets nederkant och flyttas aldrig. Bannern har systemtypsnitt (inget typsnittsbyte) och fasta mått på knapparna. Temats knappstilar neutraliseras.
+- Även guidens, Instagramflödets, adressökningens och driftlistornas CSS skrivs ut i `<head>` när sidan (innehåll eller Elementor-data) använder dem. Det kan utökas med filtret `wpfinet_head_styles`.
+- Instagram: bilder har `width`/`height`, och bildtexterna har fast höjd (3 rader).
+- Cachebrytning: filernas versionsparameter innehåller filens ändringstid (`3.1.1.<mtime>`), så Cloudflare och webbläsare aldrig blandar gamla och nya filer.
+
+**Tester**
+
+- `tests/e2e/elementor/`: de riktiga sidorna från dev.finet.se (Elementor 4.3.6, Astra 4.14.2, temats CSS och typsnitt) spelas upp offline med pluginets aktuella kod. Testet kontrollerar bredd, radbrytning, knappar, klippning, höjd i alla steg och CLS vid 1920/1440/1280/390/375 px, med och utan banner och i reservläget. Lighthouse kan köras mot samma uppspelning.
+- `tests/e2e/run-container-width.sh`: guidens bredd i nio containertyper (flex, grid, inline-block, float, tabellcell m.fl.).
+
+## 3.1.0
+
+Uppgradering på plats av 3.0.0 (eller direkt från 2.0.1). Inga data tas bort; samma shortcodes, REST-rutter, hooks, slugs och URL:er.
+
+**Instagram**
+
+- Stöd för båda Meta-modellerna: *Instagram API with Instagram Login* (graph.instagram.com, token börjar med `IGAA`) och *Instagram API with Facebook Login* (graph.facebook.com, token börjar med `EAA`). 3.0 talade bara den första, så Facebook-tokens hämtade aldrig inlägg. Modellen känns igen automatiskt eller väljs manuellt.
+- Instagram Account ID hittas automatiskt (via `/me` respektive `/me/accounts?fields=instagram_business_account`) och kan anges manuellt; vid flera konton visas en vallista.
+- Anslutningstest steg för steg (token, modell, konto, behörigheter, inläggsanrop, bildnedladdning, uppladdningsmapp, bildbibliotek, modul/schema) med förklaring av Metas felkoder.
+- "Hämta nu" körs direkt i adminanropet i stället för via WP-Cron-loopback (som IIS/Cloudflare/DISABLE_WP_CRON kunde stoppa).
+- Bildnedladdning följer omdirigeringar bara inom Metas CDN. En synk där ingen bild kan sparas behåller de gamla inläggen.
+- `wp wpfinet instagram test`.
+- Hemligheter: OpenSSL AES-256-GCM som reserv när libsodium saknas; status "kan inte dekrypteras" om salterna i wp-config ändrats.
+
+**Driftbanner**
+
+- Stängknappen fungerar (`[hidden]` skrevs över av `display:flex`). Ny layout i Finets färger, märkt region, radbryts på mobil, 44 px stängyta, fokus flyttas till huvudinnehållet. Stängning gäller per bannerversion och session.
+
+- Inställningen "Statussida URL" (Inställningar → Driftstörningar), som fanns redan i 2.0.1 men aldrig användes, styr nu länken "+N till" i bannern och `[wpfinet_outage_status]`. Tomt = `/driftstorningar/` som förut.
+
+**Felsökningsguide**
+
+- Nytt kort i Finets formspråk (Montserrat/Poppins från temat, indigo knappar, orange accent). Ytan reserverar höjden för guidens högsta steg, knapparna ligger i botten av kortet och navigeringsraden står still, så innehåll under guiden inte hoppar. Bildram med fast höjd (beskärs aldrig). Lika stora knappar, minst 50 px. Navigering, statistik, bilder, data och API oförändrade. 2.x-standardvärden för utseende skriver inte längre över den nya stilen; egna värden gäller fortfarande.
+
+**Adressökning (Finet Access API)**
+
+- Ny datakälla "Befintlig WPGetAPI-konfiguration": återanvänder WPGetAPI:s API `finet_access` / endpoint `get_access_data` (sökväg och nyckel kopieras inte), men bara i bakgrundssynken. Besökare och sidvisningar anropar aldrig WPGetAPI eller API:t.
+- Reservmatchning utan diakriter (API:t skriver "Ostra Langgatan", besökaren "Östra Långgatan"). Används bara när exakt en gata matchar, så Ågatan och Agatan blandas aldrig ihop.
+- Standardtexterna följer den gamla adresskontrollen ("{adress}: ansluten till Finet." m.fl.); `{adress}` ersätts med besökarens egen adress.
+- Shortcode-attribut: `placeholder`, `hide_label`, `hint`, `theme="dark"` (för mörk hero), flera klasser i `class`.
+- Fel rättat: om ett annat plugin svarade via `pre_http_request` med vanliga array-headers kraschade anropet.
+- Migrering 3.0 → 3.1 lägger till kolumnen `street_fold` i adressindexet och fyller den för befintliga rader.
+
 ## 3.0.0
 
 Uppgradering på plats av Finet Troubleshoot 2.0.1. Samma pluginidentitet, data, URL:er, shortcodes, REST-rutter och hooks.

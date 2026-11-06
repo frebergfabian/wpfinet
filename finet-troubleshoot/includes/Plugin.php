@@ -76,6 +76,7 @@ final class Plugin {
 		( new AdminApp() )->register_hooks();
 		( new Frontend\ModuleShortcodes() )->register_hooks();
 		( new Frontend\Blocks() )->register_hooks();
+		( new Frontend\HeadStyles() )->register_hooks();
 		( new Consent\ScanReceiver() )->register_hooks();
 		if ( Modules::enabled( 'access' ) && class_exists( Access\AccessModule::class ) ) {
 			( new Access\AccessModule() )->register_hooks();

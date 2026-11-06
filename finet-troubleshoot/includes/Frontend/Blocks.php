@@ -14,7 +14,7 @@ final class Blocks {
 
 	public function register(): void {
 		if ( ! function_exists( 'register_block_type' ) ) { return; }
-		wp_register_script( 'wpfinet-blocks', FINET_TS_URL . 'assets/build/blocks.js', array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render', 'wp-i18n' ), FINET_TS_VERSION, true );
+		wp_register_script( 'wpfinet-blocks', FINET_TS_URL . 'assets/build/blocks.js', array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render', 'wp-i18n' ), \FinetTroubleshoot\Core\Assets::ver( 'blocks.js' ), true );
 		register_block_type( 'wpfinet/access-check', array(
 			'api_version'     => 3,
 			'editor_script'   => 'wpfinet-blocks',

@@ -1,2 +1,177 @@
-.finet-troubleshoot{--wpfinet-primary:#06284d;--wpfinet-accent:#f47c20;--wpfinet-background:transparent;--wpfinet-surface:#fff;--wpfinet-text:inherit;--wpfinet-muted:#526070;--wpfinet-border:#d9e0e8;--wpfinet-radius:10px;--wpfinet-max-width:760px;box-sizing:border-box;max-width:var(--wpfinet-max-width);margin:1.5rem auto;padding:var(--wpfinet-space,24px);font-family:inherit;color:var(--wpfinet-text);background:var(--wpfinet-background);line-height:1.55}.finet-troubleshoot *{box-sizing:border-box}.wpfinet-guide__title{margin:0 0 .5rem;font-weight:700;font-size:1.55em;line-height:1.25;font-family:inherit}.wpfinet-guide__progress{margin:.25rem 0 1rem;color:var(--wpfinet-muted);font-size:.9em}.wpfinet-guide__card{padding:clamp(20px,4vw,32px);border:1px solid var(--wpfinet-border);border-radius:var(--wpfinet-radius);background:var(--wpfinet-surface);box-shadow:0 8px 24px rgb(6 40 77 / 6%)}.wpfinet-guide__result--success{border-top:4px solid #208a50}.wpfinet-guide__result--warning{border-top:4px solid var(--wpfinet-accent)}.wpfinet-guide__result--failure{border-top:4px solid #b3261e}.wpfinet-guide__result--info{border-top:4px solid var(--wpfinet-primary)}.wpfinet-guide__heading{margin:0 0 .8rem;font-weight:700;font-size:1.35em;line-height:1.3;font-family:inherit;outline-offset:4px}.wpfinet-guide__intro{font-size:1.08em}.wpfinet-guide__content>:first-child{margin-top:0}.wpfinet-guide__content>:last-child{margin-bottom:0}.wpfinet-guide__figure{margin:0 0 1.25rem}.wpfinet-guide__figure img{display:block;max-width:100%;height:auto;border-radius:calc(var(--wpfinet-radius)/1.25)}.wpfinet-guide__figure img[data-zoom]{cursor:zoom-in}.wpfinet-guide__options,.wpfinet-guide__ctas{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-top:1.5rem}.wpfinet-guide__button{display:flex;align-items:center;justify-content:center;min-height:46px;padding:.75rem 1rem;border:1px solid var(--wpfinet-primary);border-radius:7px;background:var(--wpfinet-primary);color:#fff;font-weight:600;font-size:1em;line-height:1.3;font-family:inherit;text-align:center;text-decoration:none;cursor:pointer}.wpfinet-guide__button:hover{background:#073b72}.wpfinet-guide__button:focus-visible,.wpfinet-guide__text-button:focus-visible,.wpfinet-guide__modal-close:focus-visible{outline:3px solid var(--wpfinet-accent);outline-offset:3px}.wpfinet-guide__navigation{display:flex;gap:1rem;margin-top:1rem}.wpfinet-guide__text-button{padding:.35rem 0;border:0;border-bottom:1px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer}.wpfinet-guide__support,.wpfinet-guide__outages{display:grid;gap:.5rem;margin-top:1.25rem;padding:1rem;border-left:3px solid var(--wpfinet-accent);background:#fff8f2}.wpfinet-guide__outage{padding:.8rem;border:1px solid var(--wpfinet-border);border-radius:7px;background:#fff}.wpfinet-guide__outage span{display:block;color:var(--wpfinet-muted);font-size:.9em}.wpfinet-guide__debug{margin-top:1rem;padding:.75rem;border:1px dashed var(--wpfinet-border);font:12px/1.5 monospace}.wpfinet-guide__modal{position:fixed;z-index:999999;inset:0;display:grid;place-items:center;padding:20px;background:rgb(0 0 0 / 55%)}.wpfinet-guide__modal-card{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;padding:28px;border-radius:var(--wpfinet-radius);background:#fff;color:#17212d}.wpfinet-guide__modal-card img{display:block;max-width:100%;height:auto}.wpfinet-guide__modal-close{position:absolute;top:8px;right:10px;width:36px;height:36px;border:0;border-radius:50%;background:#eef1f4;color:#17212d;font-size:24px;cursor:pointer}.wpfinet-guide__form{margin-top:1.25rem}.wpfinet-guide__error{border-left:4px solid #b3261e}@media(max-width:600px){.finet-troubleshoot{padding:16px}.wpfinet-guide__options,.wpfinet-guide__ctas{grid-template-columns:1fr}.wpfinet-guide__button{width:100%}}@media(prefers-reduced-motion:reduce){.finet-troubleshoot *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-.wpfinet-guide__progressbar{height:6px;margin:-.5rem 0 1rem;border-radius:99px;background:var(--wpfinet-border);overflow:hidden}.wpfinet-guide__progressbar span{display:block;height:100%;background:var(--wpfinet-primary)}@media(min-width:700px){.wpfinet-guide__figure--left{float:left;max-width:45%;margin:0 1.25rem 1rem 0}.wpfinet-guide__figure--right{float:right;max-width:45%;margin:0 0 1rem 1.25rem}}.wpfinet-guide__card::after{content:"";display:table;clear:both}
+/* WPFINET guide – Finet look: fonts inherited from the theme (Montserrat body, Poppins headings), indigo actions,
+ * orange accent, small radii, calm white cards. All colours can be overridden with the --wpfinet-* custom properties
+ * (WPFinet → Inställningar).
+ * 3.1.1 layout rules (see tests/e2e/elementor/):
+ * - No size containment (container-type) anywhere: in Elementor flex containers with align-items:flex-start/center
+ *   the widget is shrink-to-fit, i.e. as wide as its content says. 3.1.0 had container-type:inline-size on
+ *   .wpfinet-guide, which makes the content count as 0 px wide, so the whole guide collapsed to 0 px.
+ * - width:100% + max-width 760 px: fills its column like any block, and in shrink-to-fit containers the content
+ *   (every step, see the sizer) gives it its width – the same for every step. Themes may lower max-width further.
+ * - Responsive rules without container queries: auto-fit grids and flex-wrap adapt to the guide's own width.
+ * - Text wraps between words (overflow-wrap:break-word); "anywhere" let the browser break between every letter.
+ * - The stage stacks an invisible copy of every step in one grid cell, so it is as tall as the tallest step (capped
+ *   at 80 % of the viewport height so phones keep the buttons in view).
+ * - Selectors are prefixed with .finet-troubleshoot so theme/Elementor button rules (e.g. Astra's `button`) do not
+ *   override sizes, shadows or fonts, also when this file is printed in <head> before the theme's inline CSS. */
+.finet-troubleshoot {
+	--wpfinet-primary: #24216c;
+	--wpfinet-primary-hover: #171545;
+	--wpfinet-accent: #fd9800;
+	--wpfinet-accent-strong: #b86e00;
+	--wpfinet-ink: #0f172a;
+	--wpfinet-muted: #454f5e;
+	--wpfinet-surface: #fff;
+	--wpfinet-soft: #fef9e1;
+	--wpfinet-border: #e2e6ee;
+	--wpfinet-background: transparent;
+	--wpfinet-radius: 6px;
+	--wpfinet-space: 28px;
+	--wpfinet-max-width: 760px;
+	--wpfinet-frame-height: clamp(150px, 34vw, 260px);
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	max-width: var(--wpfinet-max-width);
+	min-width: 0;
+	margin: 1.5rem auto;
+	color: var(--wpfinet-ink);
+	background: var(--wpfinet-background);
+	font-family: inherit;
+	line-height: 1.6;
+}
+.finet-troubleshoot *, .finet-troubleshoot *::before, .finet-troubleshoot *::after { box-sizing: border-box; }
+.wpfinet-guide { position: relative; width: 100%; min-width: 0; }
+
+/* Header */
+.wpfinet-guide__header { margin: 0 0 14px; }
+.finet-troubleshoot .wpfinet-guide__title { margin: 0 0 6px; padding: 0; font-weight: 600; font-size: 1.5rem; line-height: 1.25; color: var(--wpfinet-ink); }
+.wpfinet-guide__progress-row { display: flex; align-items: center; gap: 12px; min-height: 24px; }
+.wpfinet-guide__progress { margin: 0; flex: 0 0 auto; color: var(--wpfinet-muted); font-size: .875rem; font-weight: 600; letter-spacing: .02em; }
+.wpfinet-guide__progressbar { flex: 1 1 auto; height: 6px; border-radius: 99px; background: var(--wpfinet-border); overflow: hidden; }
+.wpfinet-guide__progressbar span { display: block; height: 100%; background: var(--wpfinet-accent); transition: width .25s ease; }
+
+/* Stage: the invisible sizer and the visible step share one grid cell; the cell is as tall as the tallest step. */
+.wpfinet-guide__stage { display: grid; grid-template-columns: minmax(0, 1fr); }
+.wpfinet-guide__stage > * { grid-area: 1 / 1; min-width: 0; }
+/* The reservation is capped at 80 % of the viewport height (min 480 px): on phones a short step must not push its
+ * buttons below the fold. The sizer is invisible, so capping it clips nothing; a taller step simply grows the stage
+ * (only after a click, so it is not counted as layout shift). On desktop the tallest step normally fits. */
+.wpfinet-guide__sizer { display: grid; grid-template-columns: minmax(0, 1fr); max-height: max(480px, 80vh); max-height: max(480px, 80svh); overflow: hidden; visibility: hidden; pointer-events: none; user-select: none; }
+.wpfinet-guide__sizer > * { grid-area: 1 / 1; }
+.wpfinet-guide__sizer .wpfinet-guide__card { box-shadow: none; transition: none; }
+.wpfinet-guide__card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: var(--wpfinet-space);
+	border: 1px solid var(--wpfinet-border);
+	border-top: 4px solid var(--wpfinet-accent);
+	border-radius: var(--wpfinet-radius);
+	background: var(--wpfinet-surface);
+	box-shadow: 0 6px 24px rgb(15 23 42 / 7%);
+	transition: opacity .18s ease, transform .18s ease;
+}
+.wpfinet-guide__card.is-entering { opacity: 0; transform: translateY(4px); }
+.wpfinet-guide__result--success { border-top-color: #1f8a4c; }
+.wpfinet-guide__result--warning { border-top-color: var(--wpfinet-accent); }
+.wpfinet-guide__result--failure { border-top-color: #b3261e; }
+.wpfinet-guide__result--info { border-top-color: var(--wpfinet-primary); }
+.wpfinet-guide__body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.wpfinet-guide__text { min-width: 0; }
+.finet-troubleshoot .wpfinet-guide__heading { margin: 0 0 .6rem; padding: 0; font-weight: 600; font-size: 1.3rem; line-height: 1.3; color: var(--wpfinet-ink); outline-offset: 4px; }
+.wpfinet-guide__heading:focus { outline: none; }
+.wpfinet-guide__heading:focus-visible { outline: 3px solid var(--wpfinet-accent); }
+.wpfinet-guide__intro { margin: 0 0 .75rem; font-size: 1.05rem; color: var(--wpfinet-ink); }
+.wpfinet-guide__content { color: var(--wpfinet-muted); }
+.wpfinet-guide__content > :first-child { margin-top: 0; }
+.wpfinet-guide__content > :last-child { margin-bottom: 0; }
+.wpfinet-guide__content a, .wpfinet-guide__support a, .wpfinet-guide__outage a { color: var(--wpfinet-primary); text-decoration: underline; text-underline-offset: 3px; }
+.wpfinet-guide__text, .wpfinet-guide__intro, .wpfinet-guide__heading, .wpfinet-guide__content, .wpfinet-guide__title { overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+
+/* Images: fixed-height frame, never cropped (contain), so steps keep their size while images load */
+.wpfinet-guide__figure { margin: 0; min-width: 0; }
+.wpfinet-guide__frame { display: flex; align-items: center; justify-content: center; height: var(--wpfinet-frame-height); padding: 12px; border-radius: calc(var(--wpfinet-radius) - 2px); background: #f5f7fa; overflow: hidden; }
+.wpfinet-guide__img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+span.wpfinet-guide__img { width: 100%; height: 100%; }
+.wpfinet-guide__img[data-zoom] { cursor: zoom-in; border-radius: 4px; }
+.wpfinet-guide__img[data-zoom]:focus-visible { outline: 3px solid var(--wpfinet-accent); outline-offset: 3px; }
+.wpfinet-guide__figure figcaption { margin-top: 6px; color: var(--wpfinet-muted); font-size: .85rem; }
+/* Image beside the text when there is room (about 580 px), stacked above it otherwise – no container query needed. */
+.wpfinet-guide__card--media-left .wpfinet-guide__body, .wpfinet-guide__card--media-right .wpfinet-guide__body { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 14px 24px; }
+.wpfinet-guide__card--media-left .wpfinet-guide__figure, .wpfinet-guide__card--media-right .wpfinet-guide__figure { flex: 2 1 220px; }
+.wpfinet-guide__card--media-left .wpfinet-guide__text, .wpfinet-guide__card--media-right .wpfinet-guide__text { flex: 3 1 300px; }
+.wpfinet-guide__card--media-right .wpfinet-guide__figure { order: 2; }
+
+/* Actions: consistent size and position */
+.wpfinet-guide__actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 22px; }
+.wpfinet-guide__options, .wpfinet-guide__ctas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 12px; margin: 0; }
+.wpfinet-guide__options--single { grid-template-columns: minmax(min(210px, 100%), max-content); }
+.finet-troubleshoot .wpfinet-guide__button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 50px;
+	margin: 0;
+	padding: 12px 20px;
+	border: 2px solid var(--wpfinet-primary);
+	border-radius: 5px;
+	background: var(--wpfinet-primary);
+	color: #fff;
+	box-shadow: none;
+	font-family: var(--wpfinet-button-font, inherit);
+	font-weight: 600;
+	font-size: 1rem;
+	line-height: 1.3;
+	letter-spacing: normal;
+	text-align: center;
+	text-decoration: none;
+	text-transform: none;
+	text-shadow: none;
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: normal;
+	vertical-align: middle;
+	cursor: pointer;
+	transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.finet-troubleshoot .wpfinet-guide__button:hover, .finet-troubleshoot .wpfinet-guide__button:focus { border-color: var(--wpfinet-primary-hover); background: var(--wpfinet-primary-hover); color: #fff; }
+.finet-troubleshoot .wpfinet-guide__button--option, .finet-troubleshoot .wpfinet-guide__button--secondary { background: var(--wpfinet-surface); color: var(--wpfinet-primary); }
+.finet-troubleshoot .wpfinet-guide__button--option:hover, .finet-troubleshoot .wpfinet-guide__button--secondary:hover { background: var(--wpfinet-primary); color: #fff; }
+.wpfinet-guide__button:focus-visible, .wpfinet-guide__text-button:focus-visible, .wpfinet-guide__modal-close:focus-visible { outline: 3px solid var(--wpfinet-accent); outline-offset: 3px; }
+
+/* Navigation row: always reserves its space */
+.wpfinet-guide__navigation { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 44px; margin-top: 12px; }
+.finet-troubleshoot .wpfinet-guide__text-button { min-height: 44px; margin: 0; padding: 8px 2px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--wpfinet-primary); font: inherit; font-weight: 600; letter-spacing: normal; text-transform: none; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.finet-troubleshoot .wpfinet-guide__text-button:hover, .finet-troubleshoot .wpfinet-guide__text-button:focus { background: transparent; color: var(--wpfinet-accent-strong); }
+.finet-troubleshoot .wpfinet-guide__text-button.is-placeholder { visibility: hidden; }
+
+/* Support / outage boxes */
+.wpfinet-guide__support, .wpfinet-guide__outages { display: grid; gap: 6px; margin-top: 16px; padding: 14px 16px; border-left: 4px solid var(--wpfinet-accent); border-radius: 0 var(--wpfinet-radius) var(--wpfinet-radius) 0; background: var(--wpfinet-soft); color: var(--wpfinet-ink); }
+.wpfinet-guide__outage { padding: 12px; border: 1px solid var(--wpfinet-border); border-radius: var(--wpfinet-radius); background: #fff; }
+.wpfinet-guide__outage span { display: block; color: var(--wpfinet-muted); font-size: .9em; }
+.wpfinet-guide__form { margin-top: 16px; }
+.wpfinet-guide__error { padding: 16px; border-left: 4px solid #b3261e; background: #fdecea; }
+.wpfinet-guide__debug { margin-top: 12px; padding: 10px; border: 1px dashed var(--wpfinet-border); font: 12px/1.5 monospace; }
+
+
+/* Modal */
+.wpfinet-guide__modal { position: fixed; z-index: 999999; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 60%); }
+.wpfinet-guide__modal-card { position: relative; width: min(640px, 100%); max-height: 90vh; overflow: auto; padding: 28px; border-radius: var(--wpfinet-radius); background: #fff; color: var(--wpfinet-ink); }
+.wpfinet-guide__modal-card h3 { margin: 0 40px 12px 0; font-weight: 600; }
+.wpfinet-guide__modal-card img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.wpfinet-guide__modal-actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.wpfinet-guide__modal-actions .wpfinet-guide__button { width: auto; }
+.finet-troubleshoot .wpfinet-guide__modal-close { padding: 0; box-shadow: none; position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #eef1f5; color: var(--wpfinet-ink); font-size: 24px; line-height: 1; cursor: pointer; }
+
+/* Error message from the shortcode */
+.finet-troubleshoot__error { padding: 14px 16px; border-left: 4px solid #b3261e; background: #fdecea; }
+
+@media (max-width: 600px) {
+	.wpfinet-guide__card { padding: 20px 18px; }
+	.wpfinet-guide__options, .wpfinet-guide__ctas, .wpfinet-guide__options--single { grid-template-columns: minmax(0, 1fr); }
+	.finet-troubleshoot .wpfinet-guide__title { font-size: 1.3rem; }
+	.finet-troubleshoot .wpfinet-guide__heading { font-size: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) { .finet-troubleshoot *, .finet-troubleshoot *::before, .finet-troubleshoot *::after { transition: none !important; animation: none !important; } }

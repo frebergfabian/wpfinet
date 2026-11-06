@@ -32,7 +32,7 @@ test('unsafe CTA URLs are neutralised, safe ones kept', () => {
 	const w = setup();
 	const guide = w.FinetTroubleshootRuntime.mount(w.document.querySelector('#g'), data());
 	guide.go('done');
-	const links = [...w.document.querySelectorAll('.wpfinet-guide__ctas a')].map((a) => a.getAttribute('href'));
+	const links = [...w.document.querySelectorAll('[data-stage] > [data-node] .wpfinet-guide__ctas a')].map((a) => a.getAttribute('href'));
 	assert.deepEqual(links, ['#', '/kontakta-oss']);
 	const safe = w.FinetTroubleshootRuntime.safeHref;
 	assert.equal(safe('tel:+46101234567'), 'tel:+46101234567');

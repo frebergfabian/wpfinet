@@ -20,8 +20,8 @@ final class Renderer {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 	}
 	public function register_assets(): void {
-		wp_register_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), FINET_TS_VERSION );
-		wp_register_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), FINET_TS_VERSION, true );
+		wp_register_style( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.css' ) );
+		wp_register_script( 'finet-troubleshoot', FINET_TS_URL . 'assets/build/frontend.js', array(), \FinetTroubleshoot\Core\Assets::ver( 'frontend.js' ), true );
 	}
 	public function render( \WP_Post $post, array $attributes = array() ): string {
 		$this->ensure_assets();
@@ -39,7 +39,7 @@ final class Renderer {
 		?>
 		<section id="<?php echo esc_attr( $id ); ?>" class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" style="<?php echo esc_attr( $style ); ?>" data-finet-troubleshoot>
 			<script type="application/json" class="finet-troubleshoot__data"><?php echo wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></script>
-			<div class="finet-troubleshoot__mount" aria-live="polite"></div>
+			<div class="finet-troubleshoot__mount" aria-live="polite"><?php echo empty( $data['preview'] ) ? GuideMarkup::render( $data ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in GuideMarkup. ?></div>
 		</section>
 		<?php
 		do_action( 'finet_troubleshoot_after_render', $post->ID, $data );
@@ -97,14 +97,32 @@ final class Renderer {
 		return $settings;
 	}
 	/** @param array<string,mixed> $appearance */
+	/**
+	 * Inline custom properties from the appearance settings. 3.1: values equal to the 2.x defaults (which were stored on
+	 * every 2.x site) are treated as "not customised", so the Finet look of the stylesheet applies. Values an
+	 * administrator actually changed still override it.
+	 */
 	private function css_variables( array $appearance ): string {
-		$color = static fn ( string $key, string $fallback ): string => \FinetTroubleshoot\Import\SchemaValidator::css_color( (string) ( $appearance[ $key ] ?? '' ) ) ?: $fallback;
-		$card  = $color( 'card_background', '#ffffff' );
-		$properties = array(
-			'--wpfinet-primary' => $color( 'primary_color', '#005baa' ), '--wpfinet-background' => $color( 'background', 'transparent' ), '--wpfinet-card-background' => $card, '--wpfinet-border' => $color( 'border_color', '#d8dee7' ), '--wpfinet-radius' => absint( $appearance['radius'] ?? 8 ) . 'px', '--wpfinet-space' => absint( $appearance['spacing'] ?? 24 ) . 'px', '--wpfinet-max-width' => absint( $appearance['max_width'] ?? 760 ) . 'px',
-			// 3.0: the stylesheet reads --wpfinet-surface; 2.0.1 never mapped card_background to it (B6).
-			'--wpfinet-surface' => $card,
-		);
+		$legacy = array( 'primary_color' => '#005baa', 'background' => 'transparent', 'card_background' => '#ffffff', 'border_color' => '#d8dee7', 'radius' => 8, 'spacing' => 24, 'max_width' => 760 );
+		$custom = static function ( string $key ) use ( $appearance, $legacy ) {
+			if ( ! isset( $appearance[ $key ] ) || '' === $appearance[ $key ] ) { return null; }
+			$value = $appearance[ $key ];
+			return strtolower( (string) $value ) === strtolower( (string) $legacy[ $key ] ) ? null : $value;
+		};
+		$properties = array();
+		foreach ( array( 'primary_color' => '--wpfinet-primary', 'background' => '--wpfinet-background', 'card_background' => '--wpfinet-surface', 'border_color' => '--wpfinet-border' ) as $key => $property ) {
+			$value = $custom( $key );
+			$color = null === $value ? '' : \FinetTroubleshoot\Import\SchemaValidator::css_color( (string) $value );
+			if ( '' !== $color ) {
+				$properties[ $property ] = $color;
+				if ( 'primary_color' === $key ) { $properties['--wpfinet-primary-hover'] = $color; }
+				if ( 'card_background' === $key ) { $properties['--wpfinet-card-background'] = $color; }
+			}
+		}
+		foreach ( array( 'radius' => array( '--wpfinet-radius', 0, 48 ), 'spacing' => array( '--wpfinet-space', 8, 64 ), 'max_width' => array( '--wpfinet-max-width', 280, 1440 ) ) as $key => [ $property, $min, $max ] ) {
+			$value = $custom( $key );
+			if ( null !== $value ) { $properties[ $property ] = min( $max, max( $min, absint( $value ) ) ) . 'px'; }
+		}
 		$style = '';
 		foreach ( $properties as $property => $value ) { $style .= $property . ':' . sanitize_text_field( (string) $value ) . ';'; }
 		return $style;

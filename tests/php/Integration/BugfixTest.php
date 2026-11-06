@@ -32,6 +32,17 @@ final class BugfixTest extends TestCase {
 		$this->assertMatchesRegularExpression( '/<option value="monitoring"\s+selected/', $html );
 	}
 
+	public function test_status_url_setting_is_used_for_outage_links(): void {
+		$this->outage();
+		$this->assertStringContainsString( home_url( '/driftstorningar/' ), do_shortcode( '[wpfinet_outage_status]' ), 'default keeps the 2.x link' );
+		$settings = (array) get_option( 'finet_ts_settings', array() );
+		$settings['outages']['status_url'] = home_url( '/drift/' );
+		update_option( 'finet_ts_settings', $settings );
+		$this->assertStringContainsString( home_url( '/drift/' ), do_shortcode( '[wpfinet_outage_status]' ) );
+		unset( $settings['outages']['status_url'] );
+		update_option( 'finet_ts_settings', $settings );
+	}
+
 	public function test_b4_status_shortcode_counts_more_than_two(): void {
 		for ( $i = 0; $i < 4; $i++ ) { $this->outage(); }
 		$this->assertStringContainsString( '4 aktuella driftstörningar', do_shortcode( '[wpfinet_outage_status]' ) );

@@ -20,7 +20,9 @@ final class AccessSettings {
 	/** @return array<string,mixed> */
 	public static function defaults(): array {
 		return array(
-			'adapter'               => 'http',           // http | mock (mock = fictitious test data, never in production).
+			'adapter'               => 'http',           // http | wpgetapi (existing WPGetAPI configuration, background only) | mock (fictitious test data, never in production).
+			'wpgetapi_api_id'       => 'finet_access',
+			'wpgetapi_endpoint_id'  => 'get_access_data',
 			'mode'                  => 'index',          // index = scheduled full download into a local index; lookup = one request per search.
 			'base_url'              => self::KNOWN_BASE_URL,
 			'endpoint_path'         => '',               // UNKNOWN – must be taken from the WPGetAPI configuration / API docs.
@@ -46,14 +48,15 @@ final class AccessSettings {
 			'rate_limit'            => 20,
 			'trust_cloudflare'      => false,
 			'cta_connected_url'     => '/tjanster',
-			'cta_connected_label'   => 'Se våra tjänster',
+			'cta_connected_label'   => 'Visa leverantörens tjänster',
 			'cta_not_connected_url' => '/kontakta-oss',
 			'cta_not_connected_label' => 'Kontakta oss',
-			'text_connected'        => 'Din adress är ansluten till Finets nät.',
-			'text_not_connected'    => 'Din adress är inte ansluten ännu.',
-			'text_no_match'         => 'Vi hittade inte adressen. Kontrollera stavning, nummer och eventuell bokstav.',
+			// Texts follow the legacy address check; {adress} is replaced with the visitor's own (normalised) input.
+			'text_connected'        => '{adress}: ansluten till Finet.',
+			'text_not_connected'    => '{adress}: inte ansluten ännu.',
+			'text_no_match'         => 'Din adress hittades inte. Kontrollera stavningen och försök igen.',
 			'text_letter_required'  => 'Adressen finns med bokstav. Lägg till bokstaven, till exempel 12B.',
-			'text_invalid'          => 'Ange gatunamn och nummer, till exempel Storgatan 12B.',
+			'text_invalid'          => 'Ange adress i formatet "Gata 12B" eller liknande.',
 			'text_unavailable'      => 'Adresskontrollen är tillfälligt otillgänglig. Försök igen senare eller kontakta oss.',
 			'text_stale'            => 'Uppgiften kunde inte bekräftas mot det senaste underlaget.',
 		);
@@ -84,7 +87,10 @@ final class AccessSettings {
 		$cur = self::get();
 		$out = $cur;
 		$pick = static fn ( string $key, array $allowed ) => in_array( $input[ $key ] ?? '', $allowed, true ) ? (string) $input[ $key ] : (string) $cur[ $key ];
-		$out['adapter']   = $pick( 'adapter', array( 'http', 'mock' ) );
+		$out['adapter']   = $pick( 'adapter', array( 'http', 'wpgetapi', 'mock' ) );
+		foreach ( array( 'wpgetapi_api_id', 'wpgetapi_endpoint_id' ) as $key ) {
+			if ( isset( $input[ $key ] ) ) { $out[ $key ] = sanitize_key( (string) $input[ $key ] ) ?: $d[ $key ]; }
+		}
 		$out['mode']      = $pick( 'mode', array( 'index', 'lookup' ) );
 		$out['method']    = $pick( 'method', array( 'GET', 'POST' ) );
 		$out['auth']      = $pick( 'auth', array( 'none', 'bearer', 'header', 'basic', 'query' ) );
@@ -142,6 +148,12 @@ final class AccessSettings {
 		if ( 'mock' === $s['adapter'] ) {
 			return $missing;
 		}
+		if ( 'wpgetapi' === $s['adapter'] ) {
+			if ( ! function_exists( 'wpgetapi_endpoint' ) ) {
+				$missing[] = __( 'WPGetAPI är inte aktivt. Aktivera WPGetAPI (med API "finet_access" och endpoint "get_access_data" konfigurerade) eller välj datakällan Finet Access API.', 'finet-troubleshoot' );
+			}
+			return $missing;
+		}
 		if ( '' === $s['endpoint_path'] ) {
 			$missing[] = __( 'Endpointens relativa sökväg under base URL (finns i WPGetAPI-konfigurationen för endpoint "get_access_data" eller i API-dokumentationen).', 'finet-troubleshoot' );
 		}
@@ -155,6 +167,12 @@ final class AccessSettings {
 			$missing[] = __( 'Query-parametrar för uppslag av en adress (bara om API:t stödjer filtrerad sökning – annars använd indexläge).', 'finet-troubleshoot' );
 		}
 		return $missing;
+	}
+
+	/** True when lookups are answered from the local index (always for test data and WPGetAPI). */
+	public static function uses_index( ?array $s = null ): bool {
+		$s = $s ?? self::get();
+		return 'index' === $s['mode'] || in_array( $s['adapter'], array( 'mock', 'wpgetapi' ), true );
 	}
 
 	public static function endpoint_url( ?array $s = null ): string {

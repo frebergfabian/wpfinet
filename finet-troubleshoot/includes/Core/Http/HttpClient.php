@@ -67,6 +67,19 @@ final class HttpClient {
 		do {
 			$start    = microtime( true );
 			$response = wp_safe_remote_request( $url, $args );
+			// Optional redirect following that re-checks every hop against the allowlist (CDNs redirect between hosts).
+			$hops = max( 0, min( 5, (int) ( $options['follow_redirects'] ?? 0 ) ) );
+			while ( $hops-- > 0 && ! is_wp_error( $response ) && in_array( (int) wp_remote_retrieve_response_code( $response ), array( 301, 302, 303, 307, 308 ), true ) ) {
+				$location = (string) wp_remote_retrieve_header( $response, 'location' );
+				$next     = \WP_Http::make_absolute_url( $location, $url );
+				$next_host = strtolower( (string) wp_parse_url( $next, PHP_URL_HOST ) );
+				if ( 'https' !== strtolower( (string) wp_parse_url( $next, PHP_URL_SCHEME ) ) || ! self::host_allowed( $next_host, $this->allowed_hosts ) ) {
+					$response = new \WP_Error( 'wpfinet_redirect_blocked', sprintf( 'Omdirigering till %s är inte tillåten.', $next_host ?: '(okänd)' ) );
+					break;
+				}
+				$url      = $next;
+				$response = wp_safe_remote_request( $url, $args );
+			}
 			$ms       = (int) round( ( microtime( true ) - $start ) * 1000 );
 			if ( is_wp_error( $response ) ) {
 				$result = $fail( $response->get_error_message(), 0, $ms );
@@ -74,7 +87,9 @@ final class HttpClient {
 				$status = (int) wp_remote_retrieve_response_code( $response );
 				$body   = (string) wp_remote_retrieve_body( $response );
 				$headers = array();
-				foreach ( (array) wp_remote_retrieve_headers( $response )->getAll() as $k => $v ) { $headers[ strtolower( (string) $k ) ] = is_array( $v ) ? implode( ', ', $v ) : (string) $v; }
+				$raw     = wp_remote_retrieve_headers( $response );
+				$raw     = is_object( $raw ) && method_exists( $raw, 'getAll' ) ? $raw->getAll() : (array) $raw; // Other plugins' pre_http_request filters may return a plain array.
+				foreach ( $raw as $k => $v ) { $headers[ strtolower( (string) $k ) ] = is_array( $v ) ? implode( ', ', $v ) : (string) $v; }
 				$result = array( 'ok' => $status >= 200 && $status < 300, 'status' => $status, 'body' => $body, 'headers' => $headers, 'error' => $status >= 200 && $status < 300 ? '' : 'HTTP ' . $status, 'duration_ms' => $ms );
 			}
 			$retryable = ! $result['ok'] && ( 0 === $result['status'] || $result['status'] >= 500 || 429 === $result['status'] );

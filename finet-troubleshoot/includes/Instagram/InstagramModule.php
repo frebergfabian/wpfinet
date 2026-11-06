@@ -20,7 +20,7 @@ final class InstagramModule {
 	}
 
 	public function init(): void {
-		wp_register_style( 'wpfinet-instagram', FINET_TS_URL . 'assets/build/instagram.css', array(), FINET_TS_VERSION );
+		wp_register_style( 'wpfinet-instagram', FINET_TS_URL . 'assets/build/instagram.css', array(), \FinetTroubleshoot\Core\Assets::ver( 'instagram.css' ) );
 		$interval = (string) InstagramService::settings()['sync_interval'];
 		if ( wp_next_scheduled( 'wpfinet_instagram_sync' ) && wp_get_schedule( 'wpfinet_instagram_sync' ) !== $interval ) {
 			wp_clear_scheduled_hook( 'wpfinet_instagram_sync' );
@@ -60,7 +60,7 @@ final class InstagramModule {
 			$caption = (string) $item['caption'];
 			$short   = $length && mb_strlen( $caption ) > $length ? rtrim( mb_substr( $caption, 0, $length ) ) . '…' : $caption;
 			$alt     = $caption ? mb_substr( $caption, 0, 120 ) : sprintf( /* translators: %s username */ __( 'Instagraminlägg från @%s', 'finet-troubleshoot' ), (string) $state['username'] );
-			$out    .= '<li class="wpfinet-instagram__item"><a class="wpfinet-instagram__link" href="' . esc_url( (string) $item['permalink'] ) . '" rel="noopener"><img src="' . esc_url( $dir['url'] . '/' . rawurlencode( (string) $item['file'] ) ) . '" alt="' . esc_attr( $alt ) . '" loading="lazy" decoding="async"' . ( $item['width'] ? ' width="' . (int) $item['width'] . '" height="' . (int) $item['height'] . '"' : '' ) . '>' . ( 'VIDEO' === $item['type'] ? '<span class="wpfinet-instagram__badge">' . esc_html__( 'Video', 'finet-troubleshoot' ) . '</span>' : '' ) . '<span class="screen-reader-text">' . esc_html__( '(öppnas på Instagram)', 'finet-troubleshoot' ) . '</span></a>';
+			$out    .= '<li class="wpfinet-instagram__item"><a class="wpfinet-instagram__link" href="' . esc_url( (string) $item['permalink'] ) . '" rel="noopener"><img src="' . esc_url( $dir['url'] . '/' . rawurlencode( (string) $item['file'] ) ) . '" alt="' . esc_attr( $alt ) . '" width="640" height="640" loading="lazy" decoding="async"' . ( $item['width'] ? ' width="' . (int) $item['width'] . '" height="' . (int) $item['height'] . '"' : '' ) . '>' . ( 'VIDEO' === $item['type'] ? '<span class="wpfinet-instagram__badge">' . esc_html__( 'Video', 'finet-troubleshoot' ) . '</span>' : '' ) . '<span class="screen-reader-text">' . esc_html__( '(öppnas på Instagram)', 'finet-troubleshoot' ) . '</span></a>';
 			if ( ( $captions && $short ) || ( $dates && $item['timestamp'] ) ) {
 				$out .= '<div class="wpfinet-instagram__meta">' . ( $dates && $item['timestamp'] ? '<time datetime="' . esc_attr( gmdate( 'c', (int) $item['timestamp'] ) ) . '">' . esc_html( wp_date( (string) get_option( 'date_format' ), (int) $item['timestamp'] ) ) . '</time>' : '' ) . ( $captions && $short ? '<p>' . esc_html( $short ) . '</p>' : '' ) . '</div>';
 			}
